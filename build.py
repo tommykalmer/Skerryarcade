@@ -157,7 +157,7 @@ def sec(ctx, title, icon, color, body, more=None):  # body: tiles(..., list_id=.
 
 # ---------------------------------------------------------------- pages
 def home_body(ctx):
-    feat = [g for g in GAMES if g.get("featured")][:SPOTLIGHT] or GAMES[:SPOTLIGHT]
+    feat = sorted([g for g in GAMES if g.get("featured")], key=lambda g: g["featured"])[:SPOTLIGHT] or GAMES[:SPOTLIGHT]
     spot = ""
     if feat:
         spot = '<div class="spot" data-spot data-list="spotlight">%s%s</div><div class="dots" aria-hidden="true">%s</div>' % (

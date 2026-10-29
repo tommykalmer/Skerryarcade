@@ -61,7 +61,7 @@
       "Bosses"
     ],
     "added": "2026-10-29",
-    "featured": true
+    "featured": 1
   },
   {
     "slug": "snowfeud",
@@ -121,7 +121,7 @@
       "Bot rivals"
     ],
     "added": "2026-10-20",
-    "featured": true
+    "featured": 3
   },
   {
     "slug": "golffeud",
@@ -181,7 +181,7 @@
       "Bot rivals"
     ],
     "added": "2026-10-15",
-    "featured": true
+    "featured": 4
   },
   {
     "slug": "alandsflyg",
@@ -243,6 +243,69 @@
       "Missions"
     ],
     "added": "2026-10-10",
-    "featured": false
+    "featured": 0
+  },
+  {
+    "slug": "ice-floe",
+    "title": "ICE FLOE",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#6FD3FF",
+    "tagline": "Drop, merge and chase the Midnight Sun. A new puzzle every day.",
+    "summary": "A daily merge puzzle with real physics. Drop ice into the fjord, merge matching pieces and reach the Midnight Sun before it overflows.",
+    "about": [
+      "Drop pieces of ice into the fjord. When two matching pieces touch they merge into the next size up, from a tiny snowflake all the way to the Midnight Sun. The pieces tumble, roll and settle for real, so every drop shifts the whole pile.",
+      "Chain merges quickly to build a combo multiplier. Let the ice rest above the dashed line for too long and the run is over. Once you reach the Midnight Sun it stays on the board and keeps glowing, so the fjord fills up faster.",
+      "Every day there is a new puzzle with the same pieces for everyone. Share your result and compare with friends, keep your daily streak alive, or play Endless mode for new pieces every round."
+    ],
+    "features": [
+      "A new daily puzzle, the same for everyone",
+      "8 pieces from Snowflake to Midnight Sun",
+      "Combo multiplier for quick chains",
+      "Daily streak and shareable results"
+    ],
+    "controls": [
+      [
+        "Aim",
+        "Move the mouse or press ← →",
+        "Drag your finger"
+      ],
+      [
+        "Drop",
+        "Click, Space or ↓",
+        "Let go"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Merge puzzle",
+      "A round": "A few minutes",
+      "Players": "1",
+      "Progress": "Saved in this browser"
+    },
+    "keywords": "merge game, suika-like, daily puzzle, physics puzzle, drop and merge, free puzzle game",
+    "touchOrientation": "any",
+    "categories": [
+      "puzzle",
+      "casual"
+    ],
+    "tags": [
+      "Merge",
+      "Daily puzzle",
+      "Physics",
+      "Relaxing",
+      "Share your score"
+    ],
+    "added": "2026-10-29",
+    "featured": 2
   }
 ]
