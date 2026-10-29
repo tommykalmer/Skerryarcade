@@ -1,0 +1,139 @@
+[
+  {
+    "slug": "ember-vigil",
+    "title": "Ember Vigil",
+    "repo": "tommykalmer/EmberVigil",
+    "entry": "index.html",
+    "badge": "New",
+    "accent": "#FF9F43",
+    "tagline": "Keep your lantern lit and survive the winter night.",
+    "summary": "A survival roguelite in a dark Nordic forest. You move, your rune weapons fire by themselves, and dawn is seven minutes away.",
+    "about": [
+      "Monsters pour out of the winter forest and you have one job: keep your lantern burning until dawn. You only steer. Your weapons fire on their own, so every decision is where to stand and which upgrade to take next.",
+      "Collect blue crystals to level up and build your own mix of burning bolts, a ring of embers, firepots, Tyr's spear and northern lights that chain between enemies. Max out a weapon, pair it with the right blessing and open a chest to evolve it into something far stronger.",
+      "Every run earns embers, even when you fall. Spend them on permanent upgrades and new heroes, then head back out and last a little longer. Survive a night to unlock the next one. There are ten, each harder than the last."
+    ],
+    "features": [
+      "6 rune weapons, 8 blessings and 6 evolutions",
+      "3 bosses, from a fell troll to the Frost Giant",
+      "4 heroes and 18 goals to unlock",
+      "10 nights of rising difficulty"
+    ],
+    "controls": [
+      ["Move", "WASD or arrow keys", "Drag anywhere"],
+      ["Pick an upgrade", "Click or press 1–4", "Tap a card"],
+      ["Pause", "P", "Pause button"],
+      ["Sound on or off", "M", "Sound button"]
+    ],
+    "facts": {
+      "Genre": "Action roguelite",
+      "A round": "7-minute nights",
+      "Players": "1",
+      "Progress": "Saved in this browser"
+    },
+    "keywords": "survivors-like, roguelite, bullet heaven, browser game, free online game",
+    "touchOrientation": "any"
+  },
+  {
+    "slug": "snowfeud",
+    "title": "Snowfeud",
+    "repo": "tommykalmer/Snowfeud",
+    "entry": "play.html",
+    "accent": "#8C9BFF",
+    "ownSite": "https://snowfeud.com",
+    "tagline": "Penguin artillery. Beat the bot, or duel a friend over a link.",
+    "summary": "Two penguin teams, two snowy hills and a mountain in between. Drag back, mind the wind and bury the other side in snow.",
+    "about": [
+      "Two teams of penguins face each other across the snow with a mountain in the way. Drag back to aim, let go to throw, and read the wind before every shot. Bury the whole enemy team to win.",
+      "Play the bot and work your way through three rivals: The Rookie, The Pro and The Legend. Your first match unlocks six special weapons, walking and switching penguins.",
+      "Or challenge a friend. Take your shot, send the link, and they fire back from their own phone. There are no accounts and nothing to install. The whole match travels inside the link."
+    ],
+    "features": [
+      "Three bot rivals to beat in order",
+      "Six special weapons to unlock",
+      "Friend duels played over shared links",
+      "Wind that changes every shot"
+    ],
+    "controls": [
+      ["Aim and throw", "Drag back with the mouse, release", "Drag back, release"],
+      ["Switch penguin", "Click a penguin", "Tap a penguin"],
+      ["Pick a weapon", "Click the weapon bar", "Tap the weapon bar"]
+    ],
+    "facts": {
+      "Genre": "Turn-based artillery",
+      "A round": "One match",
+      "Players": "1 vs bot, or 2 over a link",
+      "Progress": "Saved in this browser"
+    },
+    "keywords": "artillery game, worms-like, penguin game, play with friends, turn-based, browser game",
+    "touchOrientation": "any"
+  },
+  {
+    "slug": "golffeud",
+    "title": "GolfFeud",
+    "repo": "tommykalmer/Golfrundan",
+    "entry": "play.html",
+    "accent": "#4FD17E",
+    "ownSite": "https://www.golffeud.com",
+    "tagline": "Play a hole, send the link, and your friend chases your ghost.",
+    "summary": "Nine-hole golf duels. Pick a club, drag back to swing and add backspin or topspin to stop it on the green.",
+    "about": [
+      "GolfFeud is golf you play against a ghost. Play a hole, send the link, and your friend plays the same hole with your round replaying beside them, shot for shot. Fewest strokes takes the hole. Nine holes settle the feud.",
+      "Choose between driver, iron, wedge and putter, then drag back anywhere to swing. Backspin bites on landing and topspin runs. Mind the wind, the water, the sand and the rough.",
+      "No friend around? Play the bot. The Rookie, The Pro and The Legend each play a full nine-hole match against you."
+    ],
+    "features": [
+      "9-hole matches with fresh holes every round",
+      "Driver, iron, wedge and putter",
+      "Backspin and topspin control",
+      "Ghost duels over shared links"
+    ],
+    "controls": [
+      ["Swing", "Drag back with the mouse, release", "Drag back anywhere, release"],
+      ["Change club", "Click a club", "Tap a club"],
+      ["Spin", "Click Back, Flat or Top", "Tap Back, Flat or Top"]
+    ],
+    "facts": {
+      "Genre": "Sports, golf",
+      "A round": "9 holes",
+      "Players": "1 vs bot, or 2 over a link",
+      "Account": "None needed"
+    },
+    "keywords": "golf game, mini golf, play with friends, ghost race, browser golf, free golf game",
+    "touchOrientation": "any"
+  },
+  {
+    "slug": "alandsflyg",
+    "title": "Ålandsflyg",
+    "repo": "tommykalmer/alandsflyg",
+    "entry": "index.html",
+    "accent": "#F5C518",
+    "tagline": "Fly bush planes, airliners and an air ambulance over the real Åland.",
+    "summary": "A flight simulator over Åland and the Stockholm and Turku archipelagos, built from real satellite and elevation data.",
+    "about": [
+      "Take off from Mariehamn and fly over the real Åland: forests, fields, bare rock, lakes and towns from satellite data, terrain from elevation models, and every road, building and lighthouse from OpenStreetMap. The map reaches all the way to Stockholm and Turku.",
+      "Choose between five aircraft: a bush plane on wheels, a seaplane on floats, a twin turboprop, an airliner with fly-by-wire and a yellow air ambulance helicopter. Eight missions include medevac flights as far out as Kökar.",
+      "New to flying? The first flight walks you through takeoff, turns and landing. A landing guide shows the glide path and the speed to hold, and every touchdown gets up to three stars."
+    ],
+    "features": [
+      "5 aircraft, from a bush plane to an airliner",
+      "Real airports: Mariehamn, Arlanda, Bromma, Turku",
+      "8 missions, including 4 medevac flights",
+      "Weather, clouds and six times of day"
+    ],
+    "controls": [
+      ["Throttle", "Shift and Ctrl, or + and −", "Drag the lever on the left"],
+      ["Stick", "Arrow keys or WASD", "Drag on the right side"],
+      ["Flaps and gear", "F and V, G", "On-screen buttons"],
+      ["Change view", "C", "View button"]
+    ],
+    "facts": {
+      "Genre": "Flight simulator",
+      "A round": "Free flight or missions",
+      "Players": "1",
+      "Progress": "Best times saved in this browser"
+    },
+    "keywords": "flight simulator, browser flight sim, Åland, airplane game, helicopter game, free flight simulator",
+    "touchOrientation": "landscape"
+  }
+]

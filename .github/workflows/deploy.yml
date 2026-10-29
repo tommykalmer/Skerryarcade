@@ -1,0 +1,79 @@
+# Builds Skerry Arcade and publishes it on GitHub Pages.
+# Pulls the latest version of every game from its own repo, so games are updated in their own repos as usual.
+# Runs on every push here, every three hours, and by hand: Actions -> "Build and deploy" -> Run workflow.
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [game-updated]
+  schedule:
+    - cron: "17 */3 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the access token for private game repos
+        env:
+          GAMES_TOKEN: ${{ secrets.GAMES_TOKEN }}
+        run: |
+          if [ -z "$GAMES_TOKEN" ]; then
+            echo "::error::The secret GAMES_TOKEN is missing. Add it under Settings -> Secrets and variables -> Actions (see README)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Ember Vigil
+        uses: actions/checkout@v4
+        with: { repository: tommykalmer/EmberVigil, path: _games/ember-vigil }
+      - name: Ålandsflyg
+        uses: actions/checkout@v4
+        with: { repository: tommykalmer/alandsflyg, path: _games/alandsflyg }
+      - name: Snowfeud
+        uses: actions/checkout@v4
+        with: { repository: tommykalmer/Snowfeud, path: _games/snowfeud, token: "${{ secrets.GAMES_TOKEN }}" }
+      - name: GolfFeud
+        uses: actions/checkout@v4
+        with: { repository: tommykalmer/Golfrundan, path: _games/golffeud, token: "${{ secrets.GAMES_TOKEN }}" }
+
+      - name: Copy the games into the site
+        run: |
+          mkdir -p dist/play
+          for g in ember-vigil alandsflyg snowfeud golffeud; do
+            rsync -a --delete \
+              --exclude .git --exclude .github --exclude README.md --exclude CNAME \
+              --exclude robots.txt --exclude sitemap.xml --exclude coast --exclude promo \
+              --exclude demo.mp4 --exclude demo.webm --exclude '*-portal.html' \
+              "_games/$g/" "dist/play/$g/"
+          done
+          python3 tools/strip_ga.py dist/play/golffeud/play.html dist/play/golffeud/index.html
+          du -sh dist/play/*
+
+      - name: Build the portal pages
+        run: python3 build.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
