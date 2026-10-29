@@ -16,6 +16,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://skerryarcade.com"
 NAME = "Skerry Arcade"
 GA_ID = ""            # the portal's GA4 Measurement ID (G-XXXXXXXXXX); visitors are asked before it loads
+GSC_VERIFICATION = "" # Google Search Console "HTML tag" code (only the content="..." value); not needed with DNS verification
 CONTACT = "hello@skerryarcade.com"
 OWNER = "AsterIQ Ab"
 NEW_DAYS = 14         # "New" badge for games added within this many days
@@ -109,8 +110,8 @@ def tile(ctx, g, extra_cls="", big=False):
             % (extra_cls, ctx.page(g["slug"]), g["accent"], vid, img, E(g["title"]), 1280 if big else 640, 720 if big else 360,
                "eager" if big else "lazy", badges(g), E(g["title"]), cta))
 
-def tiles(ctx, games, cls=""):
-    return '<div class="tiles %s">%s</div>' % (cls, "".join(tile(ctx, g) for g in games))
+def tiles(ctx, games, cls="", list_id=""):
+    return '<div class="tiles %s"%s>%s</div>' % (cls, (' data-list="%s"' % list_id) if list_id else "", "".join(tile(ctx, g) for g in games))
 
 def cat_icon(c):
     return '<span class="ic">%s</span>' % I(c["icon"])
@@ -118,7 +119,8 @@ def cat_icon(c):
 def side(ctx, current):
     def item(href, label, icon, color, key, n=""):
         cur = ' aria-current="page"' if key == current else ""
-        return '<a class="nav-i" href="%s" style="--c:%s"%s><span class="ic">%s</span><span>%s</span>%s</a>' % (href, color, cur, I(icon), label, n)
+        cl = (' data-cat-link="%s"' % key.split("/")[-1]) if key.startswith("c/") else ""
+        return '<a class="nav-i" href="%s" style="--c:%s"%s%s><span class="ic">%s</span><span>%s</span>%s</a>' % (href, color, cur, cl, I(icon), label, n)
     top = [item(ctx.page(""), "Home", "home", "#FFD23F", "home"),
            item(ctx.page("games"), "All games", "grid", "#A0A6CC", "games"),
            item(ctx.page("c/new"), "New", "new", "#FF6B9A", "c/new")]
@@ -128,7 +130,8 @@ def side(ctx, current):
 def chips(ctx, current):
     items = [("", "Home", "home", "#FFD23F"), ("c/new", "New", "new", "#FF6B9A")] + [("c/" + c["slug"], c["name"], c["icon"], c["color"]) for c in CATS]
     return '<nav class="chips" aria-label="Categories">%s</nav>' % "".join(
-        '<a href="%s" style="--c:%s"%s><span class="ic">%s</span>%s</a>' % (ctx.page(p), col, ' aria-current="page"' if (p or "home") == current else "", I(ic), n)
+        '<a href="%s" style="--c:%s"%s%s><span class="ic">%s</span>%s</a>' % (ctx.page(p), col, ' aria-current="page"' if (p or "home") == current else "",
+                                                      (' data-cat-link="%s"' % p[2:]) if p.startswith("c/") else "", I(ic), n)
         for p, n, ic, col in items)
 
 def header(ctx):
@@ -148,7 +151,7 @@ def footer(ctx):
             '<div><h3>Skerry Arcade</h3><ul><li><a href="%s">All games</a></li><li><a href="%s">New games</a></li><li><a href="%s">Privacy</a></li><li>%s</li></ul></div>'
             '<p class="legal">© %d %s</p></footer>') % (ctx.page(""), MARK, cat_links, ctx.page("games"), ctx.page("c/new"), ctx.page("privacy"), E(CONTACT), TODAY.year, NAME)
 
-def sec(ctx, title, icon, color, body, more=None):
+def sec(ctx, title, icon, color, body, more=None):  # body: tiles(..., list_id=...)
     m = ('<a class="more" href="%s">See all</a>' % more) if more else ""
     return '<section class="sec"><div class="sec-head"><h2><span class="ic" style="--c:%s">%s</span>%s</h2>%s</div>%s</section>' % (color, I(icon), E(title), m, body)
 
@@ -157,24 +160,24 @@ def home_body(ctx):
     feat = [g for g in GAMES if g.get("featured")][:SPOTLIGHT] or GAMES[:SPOTLIGHT]
     spot = ""
     if feat:
-        spot = '<div class="spot" data-spot>%s%s</div><div class="dots" aria-hidden="true">%s</div>' % (
+        spot = '<div class="spot" data-spot data-list="spotlight">%s%s</div><div class="dots" aria-hidden="true">%s</div>' % (
             tile(ctx, feat[0], "hero", True), "".join(tile(ctx, g, "side-tile", True) for g in feat[1:]),
             "".join("<i></i>" for _ in feat))
     out = [chips(ctx, "home"), spot,
-           '<section class="sec" data-recent hidden><div class="sec-head"><h2><span class="ic" style="--c:#7DE3FF">%s</span>Continue playing</h2></div><div class="tiles"></div></section>' % I("recent")]
+           '<section class="sec" data-recent hidden><div class="sec-head"><h2><span class="ic" style="--c:#7DE3FF">%s</span>Continue playing</h2></div><div class="tiles" data-list="continue_playing"></div></section>' % I("recent")]
     if len(GAMES) > 8:   # with only a few games the full list below already shows them
-        out.append(sec(ctx, "New games", "new", "#FF6B9A", tiles(ctx, GAMES[:12]), ctx.page("c/new")))
+        out.append(sec(ctx, "New games", "new", "#FF6B9A", tiles(ctx, GAMES[:12], list_id="home_new"), ctx.page("c/new")))
     for c in CATS:
         if len(c["games"]) >= HOME_ROW_MIN:
-            out.append(sec(ctx, c["name"] + " games", c["icon"], c["color"], tiles(ctx, c["games"][:12]), ctx.page("c/" + c["slug"])))
-    out.append(sec(ctx, "All games", "grid", "#A0A6CC", tiles(ctx, GAMES[:48]), ctx.page("games") if len(GAMES) > 48 else None))
+            out.append(sec(ctx, c["name"] + " games", c["icon"], c["color"], tiles(ctx, c["games"][:12], list_id="home_" + c["slug"]), ctx.page("c/" + c["slug"])))
+    out.append(sec(ctx, "All games", "grid", "#A0A6CC", tiles(ctx, GAMES[:48], list_id="home_all"), ctx.page("games") if len(GAMES) > 48 else None))
     out.append('<div class="blurb"><h2>Free online games on Skerry Arcade</h2><p>Every game here runs straight in your browser. There is nothing to download and no account to make, so you can go from tap to play in a second. '
                'Pick something quick for a short break, duel a friend over a link, or settle in for a longer run. Your progress is saved on your device.</p></div>')
     return "".join(out)
 
 def list_body(ctx, key, title, sub, icon, color, games, blurb=""):
     return '%s<div class="phead" style="--c:%s"><span class="ic">%s</span><div><h1>%s</h1><p>%s</p></div></div>%s%s' % (
-        chips(ctx, key), color, I(icon), E(title), E(sub), tiles(ctx, games) if games else '<p class="empty-state">No games here yet.</p>',
+        chips(ctx, key), color, I(icon), E(title), E(sub), tiles(ctx, games, list_id=key.replace("c/", "category_")) if games else '<p class="empty-state">No games here yet.</p>',
         ('<div class="blurb"><p>%s</p></div>' % blurb) if blurb else "")
 
 def game_body(ctx, g):
@@ -184,7 +187,7 @@ def game_body(ctx, g):
     ctrl = "".join('<tr><th scope="row">%s</th><td>%s</td><td>%s</td></tr>' % tuple(E(x) for x in c) for c in g["controls"])
     feats = "".join("<li>%s</li>" % E(f) for f in g["features"])
     about = "".join("<p>%s</p>" % E(p) for p in g["about"])
-    cats = "".join('<a class="tag" href="%s" style="--c:%s"><i></i>%s</a>' % (ctx.page("c/" + c), CAT[c]["color"], E(CAT[c]["name"])) for c in g["categories"] if c in CAT)
+    cats = "".join('<a class="tag" href="%s" style="--c:%s" data-cat-link="%s"><i></i>%s</a>' % (ctx.page("c/" + c), CAT[c]["color"], c, E(CAT[c]["name"])) for c in g["categories"] if c in CAT)
     tags = "".join('<span class="tag">%s</span>' % E(t) for t in g.get("tags", []))
     also = ""
     if g.get("ownSite"):
@@ -233,11 +236,11 @@ def game_body(ctx, g):
         shade='<div class="shade"></div>', start=start, sq=sq, title=E(g["title"]), first=E(first),
         fsbtn="" if unavailable else '<button class="tool" type="button" data-fullscreen>%s<span class="lbl">Full screen</span></button>' % I("fs"),
         ishare=I("share"), tagline=E(g["tagline"]), about=about, feats=feats, cats=cats, tags=tags, also=also, facts=facts, ctrl=ctrl,
-        rail=tiles(ctx, related[:8], "small"), more=sec(ctx, "You may also like", "new", "#FF6B9A", tiles(ctx, related[:12])))
+        rail=tiles(ctx, related[:8], "small", "game_rail"), more=sec(ctx, "You may also like", "new", "#FF6B9A", tiles(ctx, related[:12], list_id="game_also_like")))
 
 def search_body(ctx):
     return ('%s<div class="phead" style="--c:#FFD23F"><span class="ic">%s</span><div><h1 data-search-title>Search</h1><p data-search-sub>Type a game, a category or something you like, such as golf or penguins.</p></div></div>'
-            '<div class="tiles" data-search-results></div>') % (chips(ctx, "search"), I("search"))
+            '<div class="tiles" data-search-results data-list="search_results"></div>') % (chips(ctx, "search"), I("search"))
 
 def privacy_body(ctx):
     return """<div class="legal-page">
@@ -257,7 +260,7 @@ def privacy_body(ctx):
 
 def notfound_body(ctx):
     return ('<div class="notfound"><h1>Game over?</h1><p>This page does not exist, but every game is still here.</p>'
-            '<a class="pill-btn sun" href="%s">%s Back to the games</a></div>%s') % (ctx.page(""), I("home"), sec(ctx, "Try one of these", "dice", "#FFD23F", tiles(ctx, GAMES[:8])))
+            '<a class="pill-btn sun" href="%s">%s Back to the games</a></div>%s') % (ctx.page(""), I("home"), sec(ctx, "Try one of these", "dice", "#FFD23F", tiles(ctx, GAMES[:8], list_id="not_found")))
 
 # ---------------------------------------------------------------- documents
 def game_data(ctx):
@@ -287,17 +290,30 @@ def head(ctx, title, desc, path, image, jsonld=None, noindex=False):
             '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest">'
             ) % dict(url=url, name=NAME, t=E(title), d=E(desc), img=SITE + image, robots='<meta name="robots" content="noindex">' if noindex else "")
     return ('<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-            '<title>%s</title><meta name="description" content="%s"><meta name="theme-color" content="#1A1D3B">%s'
+            '<title>%s</title><meta name="description" content="%s"><meta name="theme-color" content="#1A1D3B">%s%s'
             '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-            '<link rel="stylesheet" href="%s">%s') % (E(title), E(desc), meta, FONTS, ld)
+            '<link rel="stylesheet" href="%s">%s') % (E(title), E(desc), meta,
+                ('<meta name="google-site-verification" content="%s">' % E(GSC_VERIFICATION)) if GSC_VERIFICATION and path == "/" else "", FONTS, ld)
 
 def shell(ctx, current, body):
     return '%s<div class="shell">%s<main class="main" id="main">%s%s</main></div>' % (header(ctx), side(ctx, current), body, footer(ctx))
 
+def page_meta(key):
+    """What Analytics gets for each page: page_type (also the content group), and game / category where it applies."""
+    if key == "home": return {"page-type": "home"}
+    if key == "games": return {"page-type": "all_games"}
+    if key == "c/new": return {"page-type": "category", "category": "new"}
+    if key.startswith("c/"): return {"page-type": "category", "category": key[2:]}
+    if key in BY_SLUG: return {"page-type": "game", "game": key, "category": BY_SLUG[key]["categories"][0]}
+    return {"page-type": key or "not_found"}
+
+def data_attrs(key):
+    return "".join(' data-%s="%s"' % (k, E(v)) for k, v in page_meta(key).items())
+
 def document(ctx, current, title, desc, path, image, body, jsonld=None, noindex=False):
     css, js = assets_tags(ctx)
-    return ('<!doctype html><html lang="en" data-ga="%s"><head>%s%s</head><body>%s%s</body></html>'
-            % (GA_ID, head(ctx, title, desc, path, image, jsonld, noindex), css, shell(ctx, current, body), js))
+    return ('<!doctype html><html lang="en" data-ga="%s"><head>%s%s</head><body%s>%s%s</body></html>'
+            % (GA_ID, head(ctx, title, desc, path, image, jsonld, noindex), css, data_attrs(current), shell(ctx, current, body), js))
 
 def write(rel, text):
     full = os.path.join(ROOT, "dist", rel)
@@ -354,11 +370,17 @@ def build_site():
     shutil.copytree(os.path.join(ROOT, "assets"), os.path.join(dist, "assets"), dirs_exist_ok=True)
     shutil.copy(os.path.join(ROOT, "src/style.css"), os.path.join(dist, "assets/style.css"))
     shutil.copy(os.path.join(ROOT, "src/app.js"), os.path.join(dist, "assets/app.js"))
+    shutil.copy(os.path.join(ROOT, "src/skerry-sdk.js"), os.path.join(dist, "assets/skerry-sdk.js"))
+    for g in GAMES:   # games that live in this repo (games/<slug>/) instead of a repo of their own
+        if g.get("source") == "local":
+            dst = os.path.join(dist, "play", g["slug"])
+            if os.path.islink(dst): os.remove(dst)
+            shutil.copytree(os.path.join(ROOT, "games", g["slug"]), dst, dirs_exist_ok=True)
     urls = []
     for key, path, title, desc, body, ld, img, noindex in pages(ctx):
         write((path + "/" if path else "") + "index.html", document(ctx, key, title, desc, "/" + (path + "/" if path else ""), img, body, ld, noindex))
         if not noindex: urls.append("/" + (path + "/" if path else ""))
-    write("404.html", document(ctx, "", "Page not found | Skerry Arcade", "Page not found.", "/404.html", OG(), notfound_body(ctx), None, True))
+    write("404.html", document(ctx, "not_found", "Page not found | Skerry Arcade", "Page not found.", "/404.html", OG(), notfound_body(ctx), None, True))
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s\n</urlset>\n' % "\n".join(
         "  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>" % (SITE, u, TODAY.isoformat()) for u in urls))
     write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /search/\nSitemap: %s/sitemap.xml\n" % SITE)
