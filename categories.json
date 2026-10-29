@@ -1,0 +1,72 @@
+[
+  {
+    "slug": "action",
+    "name": "Action",
+    "color": "#FF6B5A",
+    "icon": "bolt",
+    "blurb": "Fast games with monsters, shots and close calls."
+  },
+  {
+    "slug": "two-player",
+    "name": "2 Player",
+    "color": "#46E0BE",
+    "icon": "duo",
+    "blurb": "Games for two: duel a friend on the same link, or take on a bot."
+  },
+  {
+    "slug": "sports",
+    "name": "Sports",
+    "color": "#5BD16A",
+    "icon": "ball",
+    "blurb": "Golf, ball games and more, made for quick rounds."
+  },
+  {
+    "slug": "simulation",
+    "name": "Simulation",
+    "color": "#58A8FF",
+    "icon": "plane",
+    "blurb": "Fly, drive and build in detailed worlds."
+  },
+  {
+    "slug": "strategy",
+    "name": "Strategy",
+    "color": "#B48CFF",
+    "icon": "flag",
+    "blurb": "Think one move ahead: aim, plan and outsmart."
+  },
+  {
+    "slug": "survival",
+    "name": "Survival",
+    "color": "#FFA53D",
+    "icon": "flame",
+    "blurb": "Last as long as you can and come back stronger."
+  },
+  {
+    "slug": "casual",
+    "name": "Casual",
+    "color": "#FFD23F",
+    "icon": "smile",
+    "blurb": "Easy to pick up, hard to put down."
+  },
+  {
+    "slug": "puzzle",
+    "name": "Puzzle",
+    "color": "#FF7EB6",
+    "icon": "piece",
+    "blurb": "Merge, match and think your way through."
+  },
+  {
+    "slug": "racing",
+    "name": "Racing",
+    "color": "#FF8A3D",
+    "icon": "wheel",
+    "blurb": "Speed, drifts and the finish line."
+  },
+  {
+    "slug": "io",
+    "name": ".io",
+    "color": "#7DE3FF",
+    "icon": "globe",
+    "blurb": "Big online arenas against other players."
+  }
+]

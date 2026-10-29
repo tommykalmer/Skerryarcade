@@ -1,6 +1,6 @@
 # Skerry Arcade
 
-Free browser games made on Åland. Live at **https://skerryarcade.com**
+Free online games. Live at **https://skerryarcade.com**
 
 The portal is a small static site. The games are not copied into this repo: on every deploy the
 workflow pulls the latest version of each game from its own repo and places it under `/play/<game>/`.
@@ -17,10 +17,11 @@ Keep working on the games in their own repos as before.
 
 | File | Purpose |
 |---|---|
-| `games.json` | Every text about the games: titles, descriptions, controls, colours |
+| `games.json` | Every game: texts, categories, tags, colours, date added, featured |
+| `categories.json` | Categories: name, colour, icon, text. Only categories that have games are shown |
 | `build.py` | Builds the pages into `dist/` (no dependencies, plain Python 3) |
-| `src/style.css`, `src/app.js` | Design and site script (sea-chart hero, player, consent) |
-| `assets/` | Covers (`covers/<game>.webp`, `-sm.webp`, `-og.jpg`) and icons |
+| `src/style.css`, `src/app.js` | Design and site script (search, random game, continue playing, player, consent) |
+| `assets/` | Covers per game (`covers/<game>.webp` 1280×720, `-sm.webp` 640×360, `-sq.webp` 256×256, `-og.jpg` 1200×630) and icons |
 | `tools/strip_ga.py` | Removes GolfFeud's own analytics tag from the portal copy |
 | `.github/workflows/deploy.yml` | Pulls the games, builds and publishes to GitHub Pages |
 
@@ -40,7 +41,7 @@ Keep working on the games in their own repos as before.
 
 - Game changes: push to the game's own repo. The portal picks it up within three hours, or right away with *Run workflow*.
 - Text changes: edit `games.json`.
-- New game: add it to `games.json`, add three covers to `assets/covers/`, and add a checkout step for its repo in the workflow.
+- New game: add it to `games.json` (with `categories`, `added` and optionally `featured`), add the four covers to `assets/covers/`, and add a checkout step for its repo in the workflow. Optional `preview`: a short muted mp4 that plays when the tile is hovered.
 
 ## Analytics and ads
 

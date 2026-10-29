@@ -20,10 +20,26 @@
       "10 nights of rising difficulty"
     ],
     "controls": [
-      ["Move", "WASD or arrow keys", "Drag anywhere"],
-      ["Pick an upgrade", "Click or press 1–4", "Tap a card"],
-      ["Pause", "P", "Pause button"],
-      ["Sound on or off", "M", "Sound button"]
+      [
+        "Move",
+        "WASD or arrow keys",
+        "Drag anywhere"
+      ],
+      [
+        "Pick an upgrade",
+        "Click or press 1–4",
+        "Tap a card"
+      ],
+      [
+        "Pause",
+        "P",
+        "Pause button"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
     ],
     "facts": {
       "Genre": "Action roguelite",
@@ -32,7 +48,20 @@
       "Progress": "Saved in this browser"
     },
     "keywords": "survivors-like, roguelite, bullet heaven, browser game, free online game",
-    "touchOrientation": "any"
+    "touchOrientation": "any",
+    "categories": [
+      "action",
+      "survival"
+    ],
+    "tags": [
+      "Roguelite",
+      "Survival",
+      "Monsters",
+      "Upgrades",
+      "Bosses"
+    ],
+    "added": "2026-10-29",
+    "featured": true
   },
   {
     "slug": "snowfeud",
@@ -55,9 +84,21 @@
       "Wind that changes every shot"
     ],
     "controls": [
-      ["Aim and throw", "Drag back with the mouse, release", "Drag back, release"],
-      ["Switch penguin", "Click a penguin", "Tap a penguin"],
-      ["Pick a weapon", "Click the weapon bar", "Tap the weapon bar"]
+      [
+        "Aim and throw",
+        "Drag back with the mouse, release",
+        "Drag back, release"
+      ],
+      [
+        "Switch penguin",
+        "Click a penguin",
+        "Tap a penguin"
+      ],
+      [
+        "Pick a weapon",
+        "Click the weapon bar",
+        "Tap the weapon bar"
+      ]
     ],
     "facts": {
       "Genre": "Turn-based artillery",
@@ -66,7 +107,21 @@
       "Progress": "Saved in this browser"
     },
     "keywords": "artillery game, worms-like, penguin game, play with friends, turn-based, browser game",
-    "touchOrientation": "any"
+    "touchOrientation": "any",
+    "categories": [
+      "two-player",
+      "strategy",
+      "action"
+    ],
+    "tags": [
+      "Artillery",
+      "Penguins",
+      "Turn-based",
+      "Play with friends",
+      "Bot rivals"
+    ],
+    "added": "2026-10-20",
+    "featured": true
   },
   {
     "slug": "golffeud",
@@ -89,9 +144,21 @@
       "Ghost duels over shared links"
     ],
     "controls": [
-      ["Swing", "Drag back with the mouse, release", "Drag back anywhere, release"],
-      ["Change club", "Click a club", "Tap a club"],
-      ["Spin", "Click Back, Flat or Top", "Tap Back, Flat or Top"]
+      [
+        "Swing",
+        "Drag back with the mouse, release",
+        "Drag back anywhere, release"
+      ],
+      [
+        "Change club",
+        "Click a club",
+        "Tap a club"
+      ],
+      [
+        "Spin",
+        "Click Back, Flat or Top",
+        "Tap Back, Flat or Top"
+      ]
     ],
     "facts": {
       "Genre": "Sports, golf",
@@ -100,7 +167,21 @@
       "Account": "None needed"
     },
     "keywords": "golf game, mini golf, play with friends, ghost race, browser golf, free golf game",
-    "touchOrientation": "any"
+    "touchOrientation": "any",
+    "categories": [
+      "sports",
+      "two-player",
+      "casual"
+    ],
+    "tags": [
+      "Golf",
+      "Play with friends",
+      "Ghost duel",
+      "Physics",
+      "Bot rivals"
+    ],
+    "added": "2026-10-15",
+    "featured": true
   },
   {
     "slug": "alandsflyg",
@@ -122,10 +203,26 @@
       "Weather, clouds and six times of day"
     ],
     "controls": [
-      ["Throttle", "Shift and Ctrl, or + and −", "Drag the lever on the left"],
-      ["Stick", "Arrow keys or WASD", "Drag on the right side"],
-      ["Flaps and gear", "F and V, G", "On-screen buttons"],
-      ["Change view", "C", "View button"]
+      [
+        "Throttle",
+        "Shift and Ctrl, or + and −",
+        "Drag the lever on the left"
+      ],
+      [
+        "Stick",
+        "Arrow keys or WASD",
+        "Drag on the right side"
+      ],
+      [
+        "Flaps and gear",
+        "F and V, G",
+        "On-screen buttons"
+      ],
+      [
+        "Change view",
+        "C",
+        "View button"
+      ]
     ],
     "facts": {
       "Genre": "Flight simulator",
@@ -134,6 +231,18 @@
       "Progress": "Best times saved in this browser"
     },
     "keywords": "flight simulator, browser flight sim, Åland, airplane game, helicopter game, free flight simulator",
-    "touchOrientation": "landscape"
+    "touchOrientation": "landscape",
+    "categories": [
+      "simulation"
+    ],
+    "tags": [
+      "Flight simulator",
+      "Airplanes",
+      "Helicopter",
+      "3D",
+      "Missions"
+    ],
+    "added": "2026-10-10",
+    "featured": false
   }
 ]
