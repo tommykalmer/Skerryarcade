@@ -29,7 +29,7 @@
     else if (window.parent !== window) { queue.push([name, args]); if (queue.length > 50) queue.shift(); }
   }
   window.addEventListener("skerryhost", flush);
-  var prefix = "skerry." + (location.pathname.split("/")[2] || "game") + ".";
+  var prefix = "skerry." + ((location.pathname.match(/\/play\/([^\/]+)/) || [])[1] || "game") + ".";
   window.SkerrySDK = {
     gameplayStart: function () { call("gameplayStart"); },
     gameplayStop: function () { call("gameplayStop"); },

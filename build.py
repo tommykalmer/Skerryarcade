@@ -13,7 +13,8 @@ import base64, html, json, mimetypes, os, shutil, sys
 from datetime import date
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SITE = "https://skerryarcade.com"
+SITE = os.environ.get("SKERRY_SITE", "").rstrip("/") or "https://skerryarcade.com"
+BASE = os.environ.get("SKERRY_BASE", "").rstrip("/")  # e.g. "/Skerryarcade" while the site lives at tommykalmer.github.io/Skerryarcade
 NAME = "Skerry Arcade"
 GA_ID = ""            # the portal's GA4 Measurement ID (G-XXXXXXXXXX); visitors are asked before it loads
 GSC_VERIFICATION = "" # Google Search Console "HTML tag" code (only the content="..." value); not needed with DNS verification
@@ -384,7 +385,7 @@ def build_site():
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s\n</urlset>\n' % "\n".join(
         "  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>" % (SITE, u, TODAY.isoformat()) for u in urls))
     write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /search/\nSitemap: %s/sitemap.xml\n" % SITE)
-    write("CNAME", SITE.split("//")[1] + "\n")
+    if not BASE: write("CNAME", SITE.split("//")[1] + "\n")
     write(".nojekyll", "")
     write("manifest.webmanifest", json.dumps({"name": NAME, "short_name": "Skerry", "start_url": "/", "scope": "/", "display": "standalone",
         "background_color": "#11132A", "theme_color": "#1A1D3B", "icons": [
@@ -394,7 +395,29 @@ def build_site():
     for g in GAMES:   # /play/<slug>/ without a file name goes to the game page
         if g["entry"] != "index.html":
             write("play/%s/index.html" % g["slug"], '<!doctype html><meta charset="utf-8"><title>%s</title><link rel="canonical" href="%s/%s/"><meta http-equiv="refresh" content="0;url=/%s/">' % (E(g["title"]), SITE, g["slug"], g["slug"]))
+    if BASE: rebase(dist)
     print("Built dist/: %d games, %d categories, %d pages" % (len(GAMES), len(CATS), len(urls) + 2))
+
+import re
+LOCAL_URL = re.compile(r'((?:href|src|action|poster|data-[a-z-]+)=["\']|url\(["\']?|": "|url=)/(?!/)')
+def rebase(dist):
+    """The site lives in a sub-folder (GitHub's own address, before the domain is set up):
+    put BASE in front of every link that starts at the root, and keep search engines out of this temporary address."""
+    external = {g["slug"] for g in GAMES if g.get("source") != "local"}
+    for here, dirs, files in os.walk(dist):
+        rel = os.path.relpath(here, dist).split(os.sep)
+        if len(rel) >= 2 and rel[0] == "play" and rel[1] in external: dirs[:] = []; continue
+        local_game = len(rel) >= 2 and rel[0] == "play"
+        for n in files:
+            if not n.endswith((".html", ".css", ".webmanifest")): continue
+            f = os.path.join(here, n); t = open(f, encoding="utf-8").read()
+            if local_game: t = t.replace('src="/assets/', 'src="%s/assets/' % BASE)
+            else:
+                t = LOCAL_URL.sub(lambda m: m.group(1) + BASE + "/", t)
+                if n.endswith(".html") and 'name="robots"' not in t:
+                    t = t.replace('<meta charset="utf-8">', '<meta charset="utf-8"><meta name="robots" content="noindex">', 1)
+            open(f, "w", encoding="utf-8").write(t)
+    write("robots.txt", "User-agent: *\nDisallow: /\n")
 
 def build_preview(out):
     ctx = Ctx(True)
