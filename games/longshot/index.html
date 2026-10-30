@@ -100,7 +100,7 @@
     <button class="ibtn" id="soundBtn" aria-label="Sound"></button>
   </div>
 </div>
-<div class="hint" id="hint">Drag back to draw the bow. Aim with the angle, let go to shoot.</div>
+<div class="hint" id="hint">Drag back to draw the bow. The angle sets the arc, the pull sets the power.</div>
 <div class="pop" id="pop"></div>
 
 <div class="screen" id="menu">
@@ -208,7 +208,7 @@ function layout(){
   DPR = Math.min(window.devicePixelRatio || 1, 2.5); VW = innerWidth; VH = innerHeight;
   cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
   PPM = clamp(Math.min(VW / 12.5, VH / 13), 22, 46);
-  GROUND = VH * .72;
+  GROUND = VH * .74;
   sky = buildSky();
 }
 function buildSky(){
@@ -227,17 +227,17 @@ const TREES = []; for (let i = 0; i < 120; i++) TREES.push({ x: -20 + i * 1.6 + 
 
 /* ---------------- state ---------------- */
 let mode = "daily", state = "menu", players = [], cur = 0, endIdx = 0, arrowIdx = 0, winds = [], rng = Math.random;
-let cam = { x: 0, zoom: 1 }, phase = "aim";   // aim | fly | look | return
-let draw = null, arrow = null, stuck = [], slow = 1, lookT = 0, faceZoom = 0, lastHit = null, ghost = [];
+let cam = { x: 0, zoom: 1, zy: 1 }, phase = "aim";   // aim | fly | look | return
+let draw = null, arrow = null, stuck = [], slow = 1, lookT = 0, faceZoom = 0, lastHit = null, ghost = [], lastShot = [], notes = [];
 let angle = 6 * Math.PI / 180, power = .7, keysDown = {};
 function mkPlayer(name, color){ return { name, color, total: 0, xs: 0, ends: DISTANCES.map(() => []) }; }
 function startRound(m){
-  mode = m; endIdx = 0; arrowIdx = 0; cur = 0; stuck = []; ghost = [];
+  mode = m; endIdx = 0; arrowIdx = 0; cur = 0; stuck = []; ghost = []; lastShot = []; notes = [];
   rng = m === "daily" ? mulberry32(hashStr("longshot:" + dayKey())) : mulberry32((Math.random() * 2 ** 32) >>> 0);
   winds = DISTANCES.map((d, i) => { const max = 1 + i * 1.1; return Math.round((rng() * 2 - 1) * max * 2) / 2; });
   players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#46E0BE")] : [mkPlayer(m === "daily" ? "Daily #" + dayNum() : "Score", "#FFD23F")];
   document.body.classList.toggle("duo", m === "duo");
-  phase = "aim"; cam.x = 0; arrow = null; draw = null;
+  phase = "aim"; cam.x = 0; cam.zoom = fitZoom(); cam.zy = Math.max(cam.zoom, ZY_MIN()); arrow = null; draw = null; setHint();
   show(null); $("hud").hidden = false; state = "play"; hud();
   SDK.gameplayStart(); SDK.event("round_start", { mode });
 }
@@ -247,7 +247,8 @@ const wind = () => winds[endIdx];
 /* ---------------- shooting ---------------- */
 function launch(){
   const v = lerp(17, 47, power);
-  arrow = { x: BOW.x, y: BOW.y, vx: Math.cos(angle) * v, vy: Math.sin(angle) * v, z: 0, t: 0, done: false, trail: [] };
+  arrow = { x: BOW.x, y: BOW.y, vx: Math.cos(angle) * v, vy: Math.sin(angle) * v, z: 0, t: 0, done: false, trail: [], path: [{ x: BOW.x, y: BOW.y }], pt: 0 };
+  lastShot[cur] = { angle, power };
   phase = "fly"; Sound.twang(power); Sound.whoosh(); buzz(12); $("hint").style.opacity = 0;
 }
 function stepArrow(dt){
@@ -257,11 +258,12 @@ function stepArrow(dt){
   const px = a.x, py = a.y;
   a.x += a.vx * dt; a.y += a.vy * dt; a.t += dt;
   a.trail.push({ x: a.x, y: a.y }); if (a.trail.length > 26) a.trail.shift();
+  a.pt += dt; if (a.pt > 1 / 60) { a.pt = 0; a.path.push({ x: a.x, y: a.y }); }
   const D = dist();
   if (px < D && a.x >= D) {                                   // crossing the target plane
     const k = (D - px) / (a.x - px), y = py + (a.y - py) * k;
     const lateral = (Math.sin(a.t * 13.1 + endIdx * 3 + arrowIdx) * .5) * .02 * (D / 30) + (Math.random() - .5) * .035 * (D / 40);
-    const dy = y - FACE_Y, r = Math.hypot(dy, lateral);
+    const dy = y - FACE_Y, r = Math.hypot(dy, lateral); a.crossDy = dy;
     if (r <= FACE_R) return hit(D, y, lateral, r);
     if (Math.abs(dy) <= 1.05 && Math.abs(lateral) < 1) return hit(D, y, lateral, r, true);  // straw boss, no score
   }
@@ -276,6 +278,7 @@ function hit(D, y, lat, r, boss){
   stuck.push({ x: D - .05, y, ang: Math.atan2(arrow.vy, arrow.vx), owner: cur, end: endIdx, face: !boss, fy: y - FACE_Y, fz: lat });
   Sound.thunk(s >= 9); buzz(s >= 9 ? [20, 30, 20] : 15);
   lastHit = { s, isX, fy: y - FACE_Y, fz: lat }; slow = 1; phase = "look"; lookT = 0;
+  const dy = y - FACE_Y; endShot(Math.abs(dy) < .05 ? "dead centre" : (Math.round(Math.abs(dy) * 100) < 100 ? Math.round(Math.abs(dy) * 100) + " cm " : Math.abs(dy).toFixed(1) + " m ") + (dy > 0 ? "high" : "low"));
   if (s === 10) popup(isX ? "PERFECT X!" : "BULLSEYE!", "#FFD23F"); else if (s >= 9) popup(s + "!", "#FFE58A"); else if (s === 0) popup("MISSED THE FACE", "#FFFFFF");
   if (isX) { Sound.cheer(); SDK.happytime(); }
 }
@@ -285,6 +288,19 @@ function miss(){
   stuck.push({ x: arrow.x, y: Math.max(.05, arrow.y), ang: Math.atan2(arrow.vy, arrow.vx), owner: cur, end: endIdx, face: false, ground: true });
   Sound.ground(); popup(arrow.x > dist() ? "TOO HIGH" : "TOO SHORT", "#FFFFFF");
   lastHit = { s: 0 }; phase = "look"; lookT = 0;
+  endShot(arrow.crossDy !== undefined ? Math.abs(arrow.crossDy).toFixed(1) + " m " + (arrow.crossDy > 0 ? "high" : "low") : Math.max(1, Math.round(dist() - arrow.x)) + " m short");
+}
+function endShot(note){
+  notes[cur] = note;
+  arrow.path.push({ x: arrow.x, y: arrow.y });
+  ghost[cur] = arrow.path;
+}
+function setHint(){
+  const h = $("hint"), ls = lastShot[cur], n = notes[cur];
+  if (ls && n) h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "last arrow " + (Math.round(ls.angle * 1800 / Math.PI) / 10) + "° · " + Math.round(ls.power * 100) + "% power · " + n;
+  else if (endIdx > 0 && arrowIdx === 0) h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "new distance, " + dist() + " m. Wind " + (wind() === 0 ? "calm" : Math.abs(wind()) + " m/s " + (wind() > 0 ? "behind you" : "against you")) + ".";
+  else h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "drag back to draw the bow. The angle sets the arc, the pull sets the power.";
+  h.style.opacity = 1;
 }
 function record(s, isX, at){
   const p = players[cur]; p.ends[endIdx].push(isX ? "X" : s); p.total += s; if (isX) p.xs++;
@@ -296,8 +312,8 @@ function nextShot(){
   // players alternate arrows in duo; one player shoots all three otherwise
   if (players.length === 2) { if (cur === 0) { cur = 1; } else { cur = 0; arrowIdx++; } }
   else arrowIdx++;
-  if (arrowIdx >= ARROWS) { endIdx++; arrowIdx = 0; cur = 0; stuck = []; if (endIdx >= DISTANCES.length) return finish(); }
-  arrow = null; phase = "return"; hud();
+  if (arrowIdx >= ARROWS) { endIdx++; arrowIdx = 0; cur = 0; stuck = []; ghost = []; notes = []; lastShot = []; if (endIdx >= DISTANCES.length) return finish(); }
+  arrow = null; phase = "return"; hud(); setHint();
 }
 
 /* ---------------- finishing ---------------- */
@@ -351,14 +367,19 @@ function popup(text, col){ const p = $("pop"); p.textContent = text; p.style.col
 let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
 
 /* ---------------- rendering ---------------- */
+/* Horizontal and vertical scales can differ: while aiming the whole range is squeezed into view
+   horizontally, but heights stay readable. Everything (arcs, archer, target) uses the same mapping. */
 const sx = x => (x - cam.x) * PPM * cam.zoom + VW * .2;
-const sy = y => GROUND - y * PPM * cam.zoom;
+const sy = y => GROUND - y * PPM * cam.zy;
+const sa = ang => Math.atan2(Math.sin(ang) * cam.zy, Math.cos(ang) * cam.zoom);
+const ZY_MIN = () => VH > VW ? 1.15 : .85;            // taller heights on phones held upright
+const fitZoom = () => clamp(VW * .72 / (((dist() || 18) + 3) * PPM), .08, 1);
 let time = 0;
 function render(dt){
   time += dt;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(sky, 0, 0, VW, VH);
-  const Z = PPM * cam.zoom;
+  const Z = PPM * cam.zy;
   // hills with parallax
   const hillCol = ["#7A4C78", "#5A3A66", "#3E2C52"];
   for (let L = 0; L < 3; L++) {
@@ -396,24 +417,36 @@ function render(dt){
     arrow.trail.forEach((p, i) => i ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))); ctx.stroke();
     drawArrow(arrow.x, arrow.y, Math.atan2(arrow.vy, arrow.vx), players[cur].color, 1);
   }
-  // aim guide while drawing
+  // the previous arrow's full flight, as a reference for the next one
+  if (phase === "aim" || phase === "return") {
+    players.forEach((pl, i) => { const g = ghost[i]; if (!g || g.length < 2) return;
+      ctx.strokeStyle = pl.color; ctx.globalAlpha = i === cur ? .7 : .3; ctx.lineWidth = 2; ctx.setLineDash([5, 6]);
+      ctx.beginPath(); g.forEach((p, k) => k ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))); ctx.stroke(); ctx.setLineDash([]);
+      const e = g[g.length - 1]; ctx.fillStyle = pl.color; ctx.beginPath(); ctx.arc(sx(e.x), sy(e.y), 4, 0, 7); ctx.fill();
+      if (i === cur && notes[i]) { ctx.font = "700 12px Unbounded, sans-serif"; ctx.textAlign = "right"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(20,12,30,.7)";
+        const tx = Math.min(sx(e.x) - 8, VW - 12), ty = sy(e.y) - 10; ctx.strokeText(notes[i], tx, ty); ctx.fillStyle = "#fff"; ctx.fillText(notes[i], tx, ty); }
+      ctx.globalAlpha = 1; });
+  }
+  // aim guide while drawing: the first part of the arc (no wind), about 40 % of the way
   if (phase === "aim" && draw) {
     const v = lerp(17, 47, power); let x = BOW.x, y = BOW.y, vx = Math.cos(angle) * v, vy = Math.sin(angle) * v;
-    ctx.fillStyle = "rgba(255,255,255,.8)";
-    for (let i = 0; i < 16; i++) { for (let k = 0; k < 3; k++) { vx += (-DRAG * vx * Math.abs(vx) / 30) * .012; vy += (-G) * .012; x += vx * .012; y += vy * .012; } ctx.globalAlpha = 1 - i / 16; ctx.beginPath(); ctx.arc(sx(x), sy(y), 2.6, 0, 7); ctx.fill(); }
+    const stop = (dist() || 18) * .42; let i = 0;
+    ctx.fillStyle = "#fff";
+    while (x < stop && y > 0 && i < 400) { for (let k = 0; k < 4; k++) { vx += (-DRAG * vx * Math.abs(vx) / 30) * .01; vy += (-G) * .01; x += vx * .01; y += vy * .01; } i++;
+      if (i % 2) continue; ctx.globalAlpha = .9 * (1 - x / stop) + .1; ctx.beginPath(); ctx.arc(sx(x), sy(y), 2.6, 0, 7); ctx.fill(); }
     ctx.globalAlpha = 1;
     // power and angle readout
     const bx = sx(BOW.x), by = sy(BOW.y);
     ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(bx, by, 46, Math.PI * .75, Math.PI * 1.25); ctx.stroke();
     ctx.strokeStyle = power > .92 ? "#FF6B5A" : "#FFD23F"; ctx.beginPath(); ctx.arc(bx, by, 46, Math.PI * .75, Math.PI * .75 + Math.PI * .5 * power); ctx.stroke();
     ctx.fillStyle = "#fff"; ctx.font = "700 13px Unbounded, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(Math.round(angle * 180 / Math.PI * 10) / 10 + "°", bx + 14, by - 54);
+    ctx.fillText(Math.round(angle * 180 / Math.PI * 10) / 10 + "° · " + Math.round(power * 100) + "%", bx + 14, by - 54);
   }
   // target face close-up
   drawFace();
 }
 function drawSock(x, y){
-  const w = wind(), s = clamp(Math.abs(w) / 6, .15, 1), dir = w >= 0 ? 1 : -1, H = 4.2 * PPM * cam.zoom, L = 1.6 * PPM * cam.zoom;
+  const w = wind(), s = clamp(Math.abs(w) / 6, .15, 1), dir = w >= 0 ? 1 : -1, H = 4.2 * PPM * cam.zy, L = 1.6 * PPM * cam.zy;
   ctx.strokeStyle = "#E9E1EA"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - H); ctx.stroke();
   const flap = Math.sin(time * 9) * 3 * s;
   for (let k = 0; k < 4; k++) {
@@ -424,7 +457,7 @@ function drawSock(x, y){
   }
 }
 function drawTarget(D){
-  const x = sx(D), Z = PPM * cam.zoom; if (x < -200 || x > VW + 200) return;
+  const x = sx(D), Z = PPM * cam.zy; if (x < -200 || x > VW + 200) return;
   // stand
   ctx.strokeStyle = "#6B4A32"; ctx.lineWidth = Math.max(2, .12 * Z);
   ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(2.3)); ctx.lineTo(x - .9 * Z, GROUND); ctx.moveTo(x + .1 * Z, sy(2.3)); ctx.lineTo(x + .6 * Z, GROUND); ctx.stroke();
@@ -432,21 +465,25 @@ function drawTarget(D){
   ctx.fillStyle = "#D9B36A"; ctx.beginPath(); ctx.ellipse(x + .12 * Z, sy(FACE_Y), .32 * Z, 1.05 * Z, 0, 0, 7); ctx.fill();
   const cols = ["#FFFFFF", "#26232B", "#3AA6E8", "#E5423A", "#FFD23F"];
   for (let i = 0; i < 5; i++) { ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.ellipse(x, sy(FACE_Y), .26 * Z * (1 - i * .16), FACE_R * Z * (1 - i * .2), 0, 0, 7); ctx.fill(); }
+  // marker so the target is easy to find while the whole range is in view
+  if (phase === "aim" || phase === "return") { const my = sy(3.9) - 8 + Math.sin(time * 4) * 3;
+    ctx.fillStyle = "#FFD23F"; ctx.beginPath(); ctx.moveTo(x, my + 10); ctx.lineTo(x - 7, my); ctx.lineTo(x + 7, my); ctx.fill();
+    ctx.font = "700 12px Unbounded, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText(D + " m", x, my - 6); }
   // flag above the target shows the wind too
   ctx.strokeStyle = "#EEE"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(2.3)); ctx.lineTo(x - .2 * Z, sy(3.4)); ctx.stroke();
   const w = wind(), dir = w >= 0 ? 1 : -1, s = clamp(Math.abs(w) / 6, .2, 1);
   ctx.fillStyle = "#FFD23F"; ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(3.4)); ctx.lineTo(x - .2 * Z + dir * .7 * Z * s, sy(3.25) + Math.sin(time * 8) * 2); ctx.lineTo(x - .2 * Z, sy(3.1)); ctx.fill();
 }
 function drawArrow(x, y, ang, col, scale){
-  const Z = PPM * cam.zoom, L = .82 * Z * Math.max(.6, scale);
-  ctx.save(); ctx.translate(sx(x), sy(y)); ctx.rotate(-ang);
+  const Z = PPM * cam.zy, L = .82 * Z * Math.max(.6, scale);
+  ctx.save(); ctx.translate(sx(x), sy(y)); ctx.rotate(-sa(ang));
   ctx.strokeStyle = "#3A2A1E"; ctx.lineWidth = Math.max(1.5, .045 * Z); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-L, 0); ctx.stroke();
   ctx.fillStyle = "#C9CED6"; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-3, -3); ctx.lineTo(-3, 3); ctx.fill();
   ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-L + 2, 0); ctx.lineTo(-L - 6, -6); ctx.lineTo(-L + 10, 0); ctx.lineTo(-L - 6, 6); ctx.fill();
   ctx.restore();
 }
 function drawArcher(){
-  const Z = PPM * cam.zoom, fx = sx(0), fy = GROUND; if (fx < -100 || fx > VW + 100) return;
+  const Z = PPM * cam.zy, fx = sx(0), fy = GROUND; if (fx < -100 || fx > VW + 100) return;
   const u = Z / 24;                                // body scale
   ctx.save(); ctx.translate(fx, fy); ctx.scale(u, u);
   ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -463,7 +500,7 @@ function drawArcher(){
   ctx.fillStyle = "#3A2A1E"; ctx.beginPath(); ctx.arc(-1, -64, 7, Math.PI * .9, Math.PI * 2.05); ctx.fill();
   // arms + bow, rotated by the aim angle around the shoulder
   const a = phase === "aim" ? angle : (arrow && !arrow.done ? angle : angle), pull = phase === "aim" && draw ? power : 0;
-  ctx.translate(2, -50); ctx.rotate(-a);
+  ctx.translate(2, -50); ctx.rotate(-sa(a));
   const bowX = 22, bend = 4 + pull * 7, half = 20;
   ctx.strokeStyle = "#F2C9A6"; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bowX, 0); ctx.stroke();      // bow arm
   const stringX = bowX - 4 - pull * 18;
@@ -507,15 +544,18 @@ function update(dt){
     const near = dist() - arrow.x;
     slow = near < 4 && near > -1 ? lerp(slow, .25, .2) : lerp(slow, 1, .2);
     let t = dt * slow; while (t > 0 && !arrow.done) { const h = Math.min(t, 1 / 240); stepArrow(h); t -= h; }
-    cam.x = lerp(cam.x, Math.max(0, (arrow ? arrow.x : 0) - VW * .3 / PPM), 1 - Math.pow(.0005, dt));
-    cam.zoom = lerp(cam.zoom, near < 6 ? 1.6 : 1, 1 - Math.pow(.02, dt));
+    // the whole range is already in view; zoom in on the target for the last metres
+    const close = near < 7, zt = close ? 1.6 : fitZoom();
+    cam.x = lerp(cam.x, close ? Math.max(0, dist() - (VW * .55) / (PPM * 1.6)) : 0, 1 - Math.pow(.002, dt));
+    cam.zoom = lerp(cam.zoom, zt, 1 - Math.pow(.004, dt)); cam.zy = lerp(cam.zy, Math.max(zt, ZY_MIN()), 1 - Math.pow(.004, dt));
   } else if (phase === "look") {
     lookT += dt; const target = Math.max(0, dist() - (VW * .55) / (PPM * 1.6));
-    cam.x = lerp(cam.x, target, 1 - Math.pow(.01, dt)); cam.zoom = lerp(cam.zoom, 1.6, 1 - Math.pow(.02, dt));
+    cam.x = lerp(cam.x, target, 1 - Math.pow(.01, dt)); cam.zoom = lerp(cam.zoom, 1.6, 1 - Math.pow(.02, dt)); cam.zy = lerp(cam.zy, 1.6, 1 - Math.pow(.02, dt));
     if (lookT > 1.9) nextShot();
   } else if (phase === "return" || phase === "aim") {
-    cam.x = lerp(cam.x, 0, 1 - Math.pow(.0008, dt)); cam.zoom = lerp(cam.zoom, 1, 1 - Math.pow(.01, dt));
-    if (phase === "return" && cam.x < .3) { phase = "aim"; cam.x = 0; }
+    const zt = fitZoom();
+    cam.x = lerp(cam.x, 0, 1 - Math.pow(.0008, dt)); cam.zoom = lerp(cam.zoom, zt, 1 - Math.pow(.004, dt)); cam.zy = lerp(cam.zy, Math.max(zt, ZY_MIN()), 1 - Math.pow(.004, dt));
+    if (phase === "return" && cam.x < .3 && Math.abs(cam.zoom - zt) < .02) { phase = "aim"; cam.x = 0; }
   }
 }
 
