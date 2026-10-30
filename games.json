@@ -307,5 +307,186 @@
     ],
     "added": "2026-10-29",
     "featured": 2
+  },
+  {
+    "slug": "putt-cove",
+    "title": "Putt Cove",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#46E0BE",
+    "tagline": "Nine holes of island mini golf with windmills, bumpers and portals.",
+    "summary": "Mini golf on a sunny island course. Bank shots off the rails, time the windmill, dodge the water and sink every putt in as few strokes as you can.",
+    "about": [
+      "Nine handmade holes on a little island course, each with its own trick: a dogleg to bank around, a sand trap that eats your speed, a bumper alley, a spinning windmill, a lagoon in the middle of the fairway, tide slopes that push the ball sideways, a portal that jumps you across the water and a long S-shaped finale.",
+      "Drag back from anywhere to aim and set the power, then let go to putt. Water costs a stroke and puts the ball back where you hit from. Sink it in one for a hole in one.",
+      "Play alone for your best round, or take turns with a friend on the same device and compare scorecards at the end."
+    ],
+    "features": [
+      "9 handmade holes with their own tricks",
+      "Windmill, bumpers, slopes, sand, water and portals",
+      "Scorecard with birdies, eagles and holes in one",
+      "2 players take turns on one device"
+    ],
+    "controls": [
+      [
+        "Aim and putt",
+        "Drag back with the mouse, release",
+        "Drag back anywhere, let go"
+      ],
+      [
+        "Aim with keys",
+        "← → to turn, ↑ ↓ for power, Space to putt",
+        "–"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Mini golf",
+      "A round": "9 holes",
+      "Players": "1, or 2 taking turns",
+      "Progress": "Best round saved in this browser"
+    },
+    "keywords": "mini golf, minigolf, putt putt, golf game, free mini golf online, 2 player golf",
+    "touchOrientation": "any",
+    "categories": [
+      "sports",
+      "two-player",
+      "casual"
+    ],
+    "tags": [
+      "Mini golf",
+      "Physics",
+      "Windmill",
+      "Hole in one",
+      "Play with friends"
+    ],
+    "added": "2026-10-30",
+    "featured": 0
+  },
+  {
+    "slug": "dart-night",
+    "title": "Dart Night",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#FF6B5A",
+    "tagline": "Steady your hand and count down from 301. Beat three bar rivals.",
+    "summary": "Classic 301 darts in a cosy pub. Hold to steady your aim, let go to throw, and finish on a double before your rival does.",
+    "about": [
+      "Three darts a turn, 301 to count down, and you have to land exactly on zero. The board is regulation size and every segment scores like the real thing: trebles, doubles, the 25 and the bullseye.",
+      "Press and hold to steady your hand. Hold too long and it starts to shake, so pick your moment and let go. When a finish is possible the game shows you the checkout, like T20 · T20 · D20.",
+      "Work through three rivals, The Rookie, The Pro and The Legend, play a friend on the same device, or practise Around the Clock and race from 1 to the bull in as few darts as possible."
+    ],
+    "features": [
+      "301 with real bust and double-out rules",
+      "Three bot rivals to unlock",
+      "Checkout hints on every finish",
+      "2 players and Around the Clock"
+    ],
+    "controls": [
+      [
+        "Aim",
+        "Move the mouse",
+        "Drag your finger (the sight floats above it)"
+      ],
+      [
+        "Steady and throw",
+        "Hold the mouse button or Space, release",
+        "Hold, then let go"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Darts",
+      "A round": "Best of 3 legs",
+      "Players": "1 vs bot, or 2 on one device",
+      "Progress": "Unlocked rivals saved in this browser"
+    },
+    "keywords": "darts game, 301 darts, dartboard, pub darts, play darts online, 2 player darts",
+    "touchOrientation": "any",
+    "categories": [
+      "sports",
+      "two-player"
+    ],
+    "tags": [
+      "Darts",
+      "301",
+      "Bot rivals",
+      "Pub game",
+      "Play with friends"
+    ],
+    "added": "2026-10-30",
+    "featured": 0
+  },
+  {
+    "slug": "longshot",
+    "title": "Longshot",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#FF9F6B",
+    "tagline": "Draw, read the wind and find the gold from 18 to 70 metres.",
+    "summary": "Archery at sunset. Drag back to draw the bow, set the angle and let fly. Six ends with changing wind and a new daily range every day.",
+    "about": [
+      "Six ends of three arrows each, from 18 metres out to 70. Drag back to draw the bow: the length of the pull sets the power and the direction sets the angle. A short guide shows the first part of the flight, the rest is up to you.",
+      "Watch the wind sock and the flag on the target. A tailwind carries the arrow higher, a headwind makes it drop. The camera follows every arrow all the way to the boss and shows you exactly where it landed.",
+      "Shoot the daily range with the same wind as everyone else and share your result, take a free round, or duel a friend arrow by arrow on the same device."
+    ],
+    "features": [
+      "6 ends from 18 to 70 metres",
+      "Wind that changes every end",
+      "Daily range with a streak and shareable result",
+      "2 players shoot arrow by arrow"
+    ],
+    "controls": [
+      [
+        "Draw and aim",
+        "Drag back with the mouse",
+        "Drag back with your finger"
+      ],
+      [
+        "Shoot",
+        "Release",
+        "Let go"
+      ],
+      [
+        "Aim with keys",
+        "↑ ↓ for angle, hold Space to draw",
+        "–"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Archery",
+      "A round": "6 ends, 18 arrows",
+      "Players": "1, or 2 on one device",
+      "Progress": "Daily best and streak saved in this browser"
+    },
+    "keywords": "archery game, bow and arrow game, target shooting, archery online, free archery game, daily challenge",
+    "touchOrientation": "any",
+    "categories": [
+      "sports",
+      "two-player",
+      "action"
+    ],
+    "tags": [
+      "Archery",
+      "Wind",
+      "Daily challenge",
+      "Bow and arrow",
+      "Play with friends"
+    ],
+    "added": "2026-10-30",
+    "featured": 0
   }
 ]

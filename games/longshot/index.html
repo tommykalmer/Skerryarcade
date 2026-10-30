@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Longshot: archery against the wind</title>
+<meta name="description" content="Draw, aim and release. Six ends from 18 to 70 metres with changing wind. A new daily range every day, or duel a friend on the same device.">
+<meta name="theme-color" content="#2B1B3D">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700;800&display=swap">
+<script src="/assets/skerry-sdk.js"></script>
+<style>
+  :root{
+    --ink:#21152F; --panel:rgba(30,20,44,.86); --raise:#3C2C55; --line:rgba(255,220,240,.15);
+    --text:#FFF5F0; --muted:#CDB8D2; --sun:#FFD23F; --sun-ink:#231A00; --red:#E8483F; --mint:#46E0BE;
+    --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+    --f-body:"Familjen Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--text);font:500 16px/1.4 var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  [hidden]{display:none!important}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;gap:8px;align-items:flex-start;pointer-events:none;
+    padding:calc(10px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
+  .hud > *{pointer-events:auto}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 12px}
+  .score{display:grid;gap:1px;min-width:92px}
+  .score small{font:600 .68rem/1 var(--f-body);color:var(--muted);letter-spacing:.06em}
+  .score b{font:800 1.7rem/1.05 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .score span{font-size:.75rem;color:var(--muted)}
+  .score.p2{display:none}
+  .duo .score.p2{display:grid}
+  .score.on{box-shadow:0 0 0 2px var(--c)}
+  .mid{flex:1;display:grid;gap:6px;justify-items:center;min-width:0}
+  .ends{display:flex;gap:4px;align-items:center;font:700 .7rem/1 var(--f-display);color:var(--muted)}
+  .ends i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2)}
+  .ends i.done{background:var(--mint)}
+  .ends i.now{background:var(--sun);box-shadow:0 0 8px var(--sun)}
+  .wind{display:flex;align-items:center;gap:8px;font:700 .82rem/1 var(--f-display);white-space:nowrap}
+  .wind svg{width:26px;height:16px;transition:transform .4s}
+  .wind small{font:600 .72rem/1 var(--f-body);color:var(--muted)}
+  .ibtns{display:grid;gap:6px}
+  .ibtn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .ibtn svg{width:19px;height:19px}
+  .arrows{display:flex;gap:4px;justify-content:center}
+  .arrows span{font:700 .72rem/1 var(--f-display);min-width:24px;height:22px;padding:0 5px;border-radius:7px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:var(--muted)}
+  .hint{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font-size:.85rem;color:#F4E6F2;text-shadow:0 1px 6px rgba(0,0,0,.5);pointer-events:none;transition:opacity .4s}
+
+  .screen{position:fixed;inset:0;display:flex;overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(110% 70% at 50% 15%,rgba(255,150,120,.16),transparent 60%),rgba(20,12,30,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:5}
+  .card{margin:auto;width:min(430px,100%);display:grid;gap:14px;justify-items:center;text-align:center;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes pop{from{transform:scale(.93);opacity:0}to{transform:none;opacity:1}}
+  .logo{margin:0;font:800 clamp(2.6rem,12vw,3.6rem)/.9 var(--f-display);letter-spacing:-.03em;background:linear-gradient(180deg,#FFF3D6,#FFB36B 60%,#FF7A59);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 20px rgba(255,120,80,.4))}
+  .logo span{display:block;font-size:.4em;letter-spacing:.5em;margin-top:.4em;-webkit-text-fill-color:var(--mint)}
+  .lead{margin:0;color:#EFDDEA;max-width:32ch}
+  .panel{width:100%;display:grid;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:14px}
+  .panel .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .tag{font:700 .78rem/1 var(--f-display);color:var(--sun)}
+  .meta{font-size:.82rem;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+  .stat{background:rgba(255,255,255,.06);border-radius:14px;padding:10px 6px;display:grid;gap:2px}
+  .stat b{font:800 1.15rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+  .stat small{font-size:.72rem;color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;border-radius:18px;font:800 .98rem/1 var(--f-display);transition:transform .12s,box-shadow .12s}
+  .btn svg{width:18px;height:18px}
+  .btn.sun{background:var(--sun);color:var(--sun-ink);box-shadow:0 6px 0 #C89A00,0 14px 30px -8px rgba(255,210,63,.6)}
+  .btn.sun:active{transform:translateY(4px);box-shadow:0 2px 0 #C89A00}
+  .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+  .big{font:800 clamp(2.6rem,13vw,3.8rem)/1 var(--f-display);margin:0;font-variant-numeric:tabular-nums}
+  .note{font-size:.82rem;color:var(--muted);margin:0}
+  .endtable{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+  .endtable td,.endtable th{padding:6px 4px;border-bottom:1px solid var(--line)}
+  .endtable th{font-weight:600;color:var(--muted);text-align:left}
+  .endtable td{text-align:center}
+  .endtable td:last-child{text-align:right;font-weight:700}
+  .ribbon{font:800 .8rem/1 var(--f-display);color:var(--sun-ink);background:var(--sun);padding:8px 14px;border-radius:999px;transform:rotate(-3deg)}
+  .pop{position:fixed;left:50%;top:24%;transform:translate(-50%,-50%);font:800 clamp(2.4rem,12vw,4rem)/1 var(--f-display);color:#fff;text-shadow:0 4px 30px rgba(255,140,80,.9),0 0 3px #000;opacity:0;pointer-events:none;z-index:4;white-space:nowrap}
+  .pop.show{animation:popin 1.2s cubic-bezier(.3,1.6,.5,1) forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}30%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (max-height:640px){.lead{display:none}.card{gap:10px}.logo{font-size:2.3rem}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Archery range"></canvas>
+<div class="hud" id="hud" hidden>
+  <div class="box score" id="s0" style="--c:#FFD23F"><small id="n0">SCORE</small><b id="v0">0</b><span id="x0">0 X</span></div>
+  <div class="mid">
+    <div class="box wind" id="wind"><svg viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h20M16 2l6 6-6 6"/></svg><span id="windTxt">0 m/s</span><small id="distTxt">18 m</small></div>
+    <div class="ends" id="ends"></div>
+    <div class="arrows" id="arrows"></div>
+  </div>
+  <div class="box score p2" id="s1" style="--c:#46E0BE"><small id="n1">PLAYER 2</small><b id="v1">0</b><span id="x1">0 X</span></div>
+  <div class="ibtns">
+    <button class="ibtn" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
+    <button class="ibtn" id="soundBtn" aria-label="Sound"></button>
+  </div>
+</div>
+<div class="hint" id="hint">Drag back to draw the bow. Aim with the angle, let go to shoot.</div>
+<div class="pop" id="pop"></div>
+
+<div class="screen" id="menu">
+  <div class="card">
+    <h1 class="logo">LONGSHOT<span>ARCHERY</span></h1>
+    <p class="lead">Six ends, three arrows each, from 18 to 70 metres. Read the wind, find the gold.</p>
+    <div class="panel">
+      <div class="row"><span class="tag" id="dailyTag">Daily range #1</span><span class="meta" id="dailyMeta">Same wind for everyone</span></div>
+      <div class="stats">
+        <div class="stat"><b id="sToday">–</b><small>Today's best</small></div>
+        <div class="stat"><b id="sStreak">0</b><small>Day streak</small></div>
+        <div class="stat"><b id="sBest">0</b><small>Best of 180</small></div>
+      </div>
+      <button class="btn sun" id="dailyBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span id="dailyLbl">Shoot today's range</span></button>
+    </div>
+    <div class="row2"><button class="btn ghost" id="freeBtn">Free round</button><button class="btn ghost" id="duoBtn">2 players</button></div>
+    <p class="note">Tip: a tailwind carries the arrow higher, a headwind drops it.</p>
+  </div>
+</div>
+
+<div class="screen" id="over" hidden>
+  <div class="card">
+    <span class="ribbon" id="newBest" hidden>New best!</span>
+    <p class="note" id="overSub">Daily range</p>
+    <h2 class="big" id="overScore">0</h2>
+    <p class="note" id="overTitle"></p>
+    <table class="endtable" id="endTable"></table>
+    <button class="btn sun" id="shareBtn">Share result</button>
+    <div class="row2"><button class="btn ghost" id="againBtn">Shoot again</button><button class="btn ghost" id="menuBtn">Menu</button></div>
+  </div>
+</div>
+<div class="screen" id="pause" hidden>
+  <div class="card">
+    <h2 class="big" style="font-size:2.2rem">Paused</h2>
+    <button class="btn sun" id="resumeBtn">Resume</button>
+    <div class="row2"><button class="btn ghost" id="restartBtn">Restart</button><button class="btn ghost" id="quitBtn">Menu</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const SDK = window.SkerrySDK || { gameplayStart(){}, gameplayStop(){}, happytime(){}, levelEnd(){}, event(){},
+  save(k, v){ try { localStorage.setItem("longshot." + k, JSON.stringify(v)); } catch (e) {} },
+  load(k, d){ try { const v = localStorage.getItem("longshot." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } } };
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t * t * (3 - 2 * t);
+const SHARE_URL = "https://skerryarcade.com/longshot/";
+function mulberry32(seed){ return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hashStr(s){ let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const dayKey = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const dayNum = (d = new Date()) => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 0, 1)) / 864e5) + 1;
+const prevKey = k => { const [y, m, d] = k.split("-").map(Number); return dayKey(new Date(y, m - 1, d - 1)); };
+
+/* ---------------- range setup ---------------- */
+const DISTANCES = [18, 30, 40, 50, 60, 70], ARROWS = 3;
+const FACE_R = .8, RING = FACE_R / 10, FACE_Y = 1.35;   // metres
+const BOW = { x: .35, y: 1.48 }, G = 9.81, DRAG = .012, WIND_K = .38;
+const RING_COL = ["#FFFFFF", "#FFFFFF", "#26232B", "#26232B", "#3AA6E8", "#3AA6E8", "#E5423A", "#E5423A", "#FFD23F", "#FFD23F"];
+
+let save = Object.assign({ best: 0, daily: {}, streak: 0, lastDaily: "", sound: true, shots: 0, xs: 0 }, SDK.load("save", {}));
+const store = () => SDK.save("save", save);
+const liveStreak = () => { const t = dayKey(); return (save.lastDaily === t || save.lastDaily === prevKey(t)) ? save.streak : 0; };
+
+/* ---------------- audio ---------------- */
+const Sound = (() => {
+  let ctx = null, master = null;
+  function init(){ if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = save.sound ? .9 : 0; master.connect(ctx.destination); } catch (e) { ctx = null; } }
+  function noise(t, dur, vol, f, type = "bandpass", q = 1){
+    const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = b; fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(fl); fl.connect(g); g.connect(master); s.start(t); return fl;
+  }
+  function tone(f, t, dur, type, vol, to){
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+  }
+  let creak = 0;
+  const ok = () => ctx && save.sound;
+  return { init,
+    setOn(on){ if (master) master.gain.setTargetAtTime(on ? .9 : 0, ctx.currentTime, .02); },
+    draw(p){ if (!ok()) return; const now = ctx.currentTime; if (now - creak < .09) return; creak = now; noise(now, .05, .03 + p * .05, 600 + p * 900, "bandpass", 6); },
+    twang(p){ if (!ok()) return; const t = ctx.currentTime; tone(110 + p * 40, t, .35, "triangle", .3, 80); noise(t, .08, .25, 2500); },
+    whoosh(){ if (!ok()) return; const t = ctx.currentTime; const f = noise(t, .6, .14, 900, "bandpass", .8); f.frequency.exponentialRampToValueAtTime(2600, t + .5); },
+    thunk(gold){ if (!ok()) return; const t = ctx.currentTime; noise(t, .09, .6, 500, "lowpass"); tone(160, t, .12, "sine", .4, 70); if (gold) [784, 988, 1318].forEach((f, i) => tone(f, t + .08 + i * .07, .45, "triangle", .12)); },
+    ground(){ if (!ok()) return; const t = ctx.currentTime; noise(t, .12, .25, 300, "lowpass"); },
+    cheer(){ if (!ok()) return; const t = ctx.currentTime; noise(t, 1.2, .15, 1400, "bandpass", .4); [523, 659, 784, 1046].forEach((f, i) => tone(f, t + i * .08, .6, "triangle", .12)); }
+  };
+})();
+const buzz = p => { try { if (save.sound && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) {} };
+
+/* ---------------- canvas ---------------- */
+const cv = $("game"), ctx = cv.getContext("2d");
+let DPR = 1, VW = 0, VH = 0, PPM = 24, GROUND = 0;
+let sky = null;
+function layout(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5); VW = innerWidth; VH = innerHeight;
+  cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
+  PPM = clamp(Math.min(VW / 12.5, VH / 13), 22, 46);
+  GROUND = VH * .72;
+  sky = buildSky();
+}
+function buildSky(){
+  const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; const g = c.getContext("2d"); g.scale(DPR, DPR);
+  const gr = g.createLinearGradient(0, 0, 0, GROUND); gr.addColorStop(0, "#3B2A63"); gr.addColorStop(.5, "#B0577C"); gr.addColorStop(.85, "#FF9F6B"); gr.addColorStop(1, "#FFD08A");
+  g.fillStyle = gr; g.fillRect(0, 0, VW, VH);
+  const sun = g.createRadialGradient(VW * .72, GROUND - VH * .12, 4, VW * .72, GROUND - VH * .12, VH * .3);
+  sun.addColorStop(0, "rgba(255,240,200,1)"); sun.addColorStop(.12, "rgba(255,220,150,.9)"); sun.addColorStop(.4, "rgba(255,170,110,.25)"); sun.addColorStop(1, "rgba(255,150,100,0)");
+  g.fillStyle = sun; g.fillRect(0, 0, VW, VH);
+  return c;
+}
+const rnd = mulberry32(11);
+const HILLS = [[], [], []];
+for (let L = 0; L < 3; L++) for (let i = 0; i < 60; i++) HILLS[L].push(rnd());
+const TREES = []; for (let i = 0; i < 120; i++) TREES.push({ x: -20 + i * 1.6 + rnd() * 1.4, h: 3 + rnd() * 4.5, w: .9 + rnd() * .7 });
+
+/* ---------------- state ---------------- */
+let mode = "daily", state = "menu", players = [], cur = 0, endIdx = 0, arrowIdx = 0, winds = [], rng = Math.random;
+let cam = { x: 0, zoom: 1 }, phase = "aim";   // aim | fly | look | return
+let draw = null, arrow = null, stuck = [], slow = 1, lookT = 0, faceZoom = 0, lastHit = null, ghost = [];
+let angle = 6 * Math.PI / 180, power = .7, keysDown = {};
+function mkPlayer(name, color){ return { name, color, total: 0, xs: 0, ends: DISTANCES.map(() => []) }; }
+function startRound(m){
+  mode = m; endIdx = 0; arrowIdx = 0; cur = 0; stuck = []; ghost = [];
+  rng = m === "daily" ? mulberry32(hashStr("longshot:" + dayKey())) : mulberry32((Math.random() * 2 ** 32) >>> 0);
+  winds = DISTANCES.map((d, i) => { const max = 1 + i * 1.1; return Math.round((rng() * 2 - 1) * max * 2) / 2; });
+  players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#46E0BE")] : [mkPlayer(m === "daily" ? "Daily #" + dayNum() : "Score", "#FFD23F")];
+  document.body.classList.toggle("duo", m === "duo");
+  phase = "aim"; cam.x = 0; arrow = null; draw = null;
+  show(null); $("hud").hidden = false; state = "play"; hud();
+  SDK.gameplayStart(); SDK.event("round_start", { mode });
+}
+const dist = () => DISTANCES[endIdx];
+const wind = () => winds[endIdx];
+
+/* ---------------- shooting ---------------- */
+function launch(){
+  const v = lerp(17, 47, power);
+  arrow = { x: BOW.x, y: BOW.y, vx: Math.cos(angle) * v, vy: Math.sin(angle) * v, z: 0, t: 0, done: false, trail: [] };
+  phase = "fly"; Sound.twang(power); Sound.whoosh(); buzz(12); $("hint").style.opacity = 0;
+}
+function stepArrow(dt){
+  const a = arrow, W = wind();
+  a.vx += (-DRAG * a.vx * Math.abs(a.vx) / 30 + WIND_K * W) * dt;
+  a.vy += (-G - DRAG * a.vy) * dt;
+  const px = a.x, py = a.y;
+  a.x += a.vx * dt; a.y += a.vy * dt; a.t += dt;
+  a.trail.push({ x: a.x, y: a.y }); if (a.trail.length > 26) a.trail.shift();
+  const D = dist();
+  if (px < D && a.x >= D) {                                   // crossing the target plane
+    const k = (D - px) / (a.x - px), y = py + (a.y - py) * k;
+    const lateral = (Math.sin(a.t * 13.1 + endIdx * 3 + arrowIdx) * .5) * .02 * (D / 30) + (Math.random() - .5) * .035 * (D / 40);
+    const dy = y - FACE_Y, r = Math.hypot(dy, lateral);
+    if (r <= FACE_R) return hit(D, y, lateral, r);
+    if (Math.abs(dy) <= 1.05 && Math.abs(lateral) < 1) return hit(D, y, lateral, r, true);  // straw boss, no score
+  }
+  if (a.y <= 0) { a.y = 0; return miss(); }
+  if (a.x > D + 40 || a.t > 6) return miss();
+}
+function scoreFor(r){ if (r > FACE_R) return 0; return Math.max(1, 10 - Math.floor(r / RING)); }
+function hit(D, y, lat, r, boss){
+  const s = boss ? 0 : scoreFor(r), isX = !boss && r <= RING / 2;
+  record(s, isX, { y: y - FACE_Y, z: lat });
+  arrow.done = true; arrow.x = D; arrow.y = y;
+  stuck.push({ x: D - .05, y, ang: Math.atan2(arrow.vy, arrow.vx), owner: cur, end: endIdx, face: !boss, fy: y - FACE_Y, fz: lat });
+  Sound.thunk(s >= 9); buzz(s >= 9 ? [20, 30, 20] : 15);
+  lastHit = { s, isX, fy: y - FACE_Y, fz: lat }; slow = 1; phase = "look"; lookT = 0;
+  if (s === 10) popup(isX ? "PERFECT X!" : "BULLSEYE!", "#FFD23F"); else if (s >= 9) popup(s + "!", "#FFE58A"); else if (s === 0) popup("MISSED THE FACE", "#FFFFFF");
+  if (isX) { Sound.cheer(); SDK.happytime(); }
+}
+function miss(){
+  record(0, false, null);
+  arrow.done = true;
+  stuck.push({ x: arrow.x, y: Math.max(.05, arrow.y), ang: Math.atan2(arrow.vy, arrow.vx), owner: cur, end: endIdx, face: false, ground: true });
+  Sound.ground(); popup(arrow.x > dist() ? "TOO HIGH" : "TOO SHORT", "#FFFFFF");
+  lastHit = { s: 0 }; phase = "look"; lookT = 0;
+}
+function record(s, isX, at){
+  const p = players[cur]; p.ends[endIdx].push(isX ? "X" : s); p.total += s; if (isX) p.xs++;
+  save.shots++; if (isX) save.xs++;
+  SDK.event("arrow", { mode, end: endIdx + 1, distance: dist(), score: s, x: isX ? 1 : 0 });
+  hud();
+}
+function nextShot(){
+  // players alternate arrows in duo; one player shoots all three otherwise
+  if (players.length === 2) { if (cur === 0) { cur = 1; } else { cur = 0; arrowIdx++; } }
+  else arrowIdx++;
+  if (arrowIdx >= ARROWS) { endIdx++; arrowIdx = 0; cur = 0; stuck = []; if (endIdx >= DISTANCES.length) return finish(); }
+  arrow = null; phase = "return"; hud();
+}
+
+/* ---------------- finishing ---------------- */
+let shareTxt = "";
+function finish(){
+  state = "over"; SDK.gameplayStop(); arrow = null;
+  const p = players[0]; let newBest = false;
+  if (mode !== "duo") {
+    if (p.total > save.best) { save.best = p.total; newBest = true; }
+    if (mode === "daily") { const k = dayKey(); if (save.lastDaily !== k) { save.streak = save.lastDaily === prevKey(k) ? save.streak + 1 : 1; save.lastDaily = k; } save.daily[k] = Math.max(save.daily[k] || 0, p.total); }
+  }
+  store(); Sound.cheer();
+  SDK.levelEnd(mode === "daily" ? "daily_" + dayNum() : mode, "done", p.total);
+  if (newBest) SDK.happytime();
+  const emo = v => v === "X" || v >= 9 ? "🟡" : v >= 7 ? "🔴" : v >= 5 ? "🔵" : v >= 3 ? "⚫" : v >= 1 ? "⚪" : "✖️";
+  if (mode === "duo") {
+    const [a, b] = players, w = a.total === b.total ? null : a.total > b.total ? a : b;
+    $("overSub").textContent = "2 players"; $("overScore").textContent = a.total + " – " + b.total;
+    $("overTitle").textContent = w ? w.name + " wins!" : "A draw!";
+    shareTxt = "Longshot archery duel: " + a.total + " – " + b.total + (w ? ", " + w.name + " wins" : ", a draw") + " 🏹";
+  } else {
+    $("overSub").textContent = mode === "daily" ? "Daily range #" + dayNum() : "Free round";
+    $("overScore").textContent = p.total; $("overTitle").textContent = "out of 180 · " + p.xs + " X" + (mode === "daily" && liveStreak() > 1 ? " · " + liveStreak() + "-day streak" : "");
+    shareTxt = (mode === "daily" ? "Longshot #" + dayNum() : "Longshot") + " 🏹 " + p.total + "/180" + (p.xs ? " · " + p.xs + "X" : "") + "\n" + p.ends.map(e => e.map(emo).join("")).join(" ");
+  }
+  $("newBest").hidden = !newBest;
+  const rows = ["<tr><th>End</th>" + DISTANCES.map(d => "<td>" + d + "m</td>").join("") + "<td>Total</td></tr>"].concat(players.map(pl =>
+    "<tr><th>" + (players.length > 1 ? pl.name : "Points") + "</th>" + pl.ends.map(e => "<td>" + e.reduce((a, b) => a + (b === "X" ? 10 : b), 0) + "</td>").join("") + "<td>" + pl.total + "</td></tr>"));
+  $("endTable").innerHTML = rows.join("");
+  setTimeout(() => { $("hud").hidden = true; show("over"); }, 300);
+}
+async function share(){
+  const text = shareTxt + "\n" + SHARE_URL; SDK.event("share", { mode });
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Result copied"); } catch (e) { toast(text); }
+}
+
+/* ---------------- HUD ---------------- */
+function hud(){
+  players.forEach((p, i) => { $("n" + i).textContent = p.name.toUpperCase(); $("v" + i).textContent = p.total; $("x" + i).textContent = p.xs + " X"; $("s" + i).classList.toggle("on", players.length > 1 && i === cur); });
+  $("ends").innerHTML = "END " + Math.min(endIdx + 1, 6) + "/6 " + DISTANCES.map((d, i) => '<i class="' + (i < endIdx ? "done" : i === endIdx ? "now" : "") + '"></i>').join("");
+  const w = wind() || 0;
+  $("windTxt").textContent = w === 0 ? "No wind" : Math.abs(w).toFixed(1) + " m/s " + (w > 0 ? "tail" : "head");
+  $("wind").querySelector("svg").style.transform = "scaleX(" + (w < 0 ? -1 : 1) + ")";
+  $("wind").querySelector("svg").style.opacity = w === 0 ? .3 : 1;
+  $("distTxt").textContent = dist() ? dist() + " m" : "";
+  const p = players[cur];
+  if (p) { const e = p.ends[endIdx] || []; $("arrows").innerHTML = [0, 1, 2].map(k => "<span>" + (e[k] !== undefined ? e[k] : "·") + "</span>").join(""); }
+}
+function popup(text, col){ const p = $("pop"); p.textContent = text; p.style.color = col || "#fff"; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show"); }
+let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
+
+/* ---------------- rendering ---------------- */
+const sx = x => (x - cam.x) * PPM * cam.zoom + VW * .2;
+const sy = y => GROUND - y * PPM * cam.zoom;
+let time = 0;
+function render(dt){
+  time += dt;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.drawImage(sky, 0, 0, VW, VH);
+  const Z = PPM * cam.zoom;
+  // hills with parallax
+  const hillCol = ["#7A4C78", "#5A3A66", "#3E2C52"];
+  for (let L = 0; L < 3; L++) {
+    const par = .15 + L * .2, base = GROUND - (60 - L * 18) * (VH / 800), amp = (70 - L * 15) * (VH / 800);
+    ctx.fillStyle = hillCol[L]; ctx.beginPath(); ctx.moveTo(0, VH);
+    for (let x = 0; x <= VW + 20; x += 20) { const wx = x + cam.x * PPM * par * cam.zoom; const i = Math.floor(wx / 120), f = (wx / 120) - i; const h = lerp(HILLS[L][((i % 60) + 60) % 60], HILLS[L][(((i + 1) % 60) + 60) % 60], ease(f)); ctx.lineTo(x, base - h * amp); }
+    ctx.lineTo(VW, VH); ctx.fill();
+  }
+  // tree line behind the range
+  ctx.fillStyle = "#2E2342";
+  for (const t of TREES) { const x = sx(t.x * 1.0), y = GROUND - 6; if (x < -40 || x > VW + 40) continue;
+    const h = t.h * Z * .55, w = t.w * Z * .55; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - w, y); ctx.lineTo(x + w, y); ctx.fill(); }
+  // ground
+  const gg = ctx.createLinearGradient(0, GROUND, 0, VH); gg.addColorStop(0, "#5E8F4E"); gg.addColorStop(1, "#2F5A35");
+  ctx.fillStyle = gg; ctx.fillRect(0, GROUND, VW, VH - GROUND);
+  // mowing stripes and distance markers
+  for (let m = 0; m <= 80; m += 5) {
+    const x0 = sx(m), x1 = sx(m + 5); if (x1 < 0 || x0 > VW) continue;
+    if (m % 10 === 0) { ctx.fillStyle = "rgba(255,255,255,.05)"; ctx.fillRect(x0, GROUND, x1 - x0, VH - GROUND); }
+    if (m % 10 === 0 && m > 0) { ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.font = "700 " + Math.round(clamp(Z * .5, 10, 16)) + "px Unbounded, sans-serif"; ctx.textAlign = "center"; ctx.fillText(m + "m", x0, GROUND + 22); ctx.fillRect(x0 - 1, GROUND, 2, 8); }
+  }
+  // shooting line
+  ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fillRect(sx(1.1) - 1.5, GROUND, 3, VH - GROUND);
+  // wind sock at mid range
+  drawSock(sx(Math.min(dist() || 18, 30) * .5), GROUND);
+  // target
+  drawTarget(dist() || 18);
+  // arrows in the ground / boss
+  for (const s of stuck) if (s.end === endIdx || s.ground) drawArrow(s.x, s.y, s.ang, players[s.owner] ? players[s.owner].color : "#FFD23F", .7);
+  // archer
+  drawArcher();
+  // arrow in flight
+  if (arrow && !arrow.done) {
+    ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1.5; ctx.beginPath();
+    arrow.trail.forEach((p, i) => i ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))); ctx.stroke();
+    drawArrow(arrow.x, arrow.y, Math.atan2(arrow.vy, arrow.vx), players[cur].color, 1);
+  }
+  // aim guide while drawing
+  if (phase === "aim" && draw) {
+    const v = lerp(17, 47, power); let x = BOW.x, y = BOW.y, vx = Math.cos(angle) * v, vy = Math.sin(angle) * v;
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    for (let i = 0; i < 16; i++) { for (let k = 0; k < 3; k++) { vx += (-DRAG * vx * Math.abs(vx) / 30) * .012; vy += (-G) * .012; x += vx * .012; y += vy * .012; } ctx.globalAlpha = 1 - i / 16; ctx.beginPath(); ctx.arc(sx(x), sy(y), 2.6, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    // power and angle readout
+    const bx = sx(BOW.x), by = sy(BOW.y);
+    ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(bx, by, 46, Math.PI * .75, Math.PI * 1.25); ctx.stroke();
+    ctx.strokeStyle = power > .92 ? "#FF6B5A" : "#FFD23F"; ctx.beginPath(); ctx.arc(bx, by, 46, Math.PI * .75, Math.PI * .75 + Math.PI * .5 * power); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.font = "700 13px Unbounded, sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(Math.round(angle * 180 / Math.PI * 10) / 10 + "°", bx + 14, by - 54);
+  }
+  // target face close-up
+  drawFace();
+}
+function drawSock(x, y){
+  const w = wind(), s = clamp(Math.abs(w) / 6, .15, 1), dir = w >= 0 ? 1 : -1, H = 4.2 * PPM * cam.zoom, L = 1.6 * PPM * cam.zoom;
+  ctx.strokeStyle = "#E9E1EA"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - H); ctx.stroke();
+  const flap = Math.sin(time * 9) * 3 * s;
+  for (let k = 0; k < 4; k++) {
+    const x0 = x + dir * L * k / 4 * s, x1 = x + dir * L * (k + 1) / 4 * s, droop = (1 - s) * L * .9;
+    ctx.fillStyle = k % 2 ? "#FFFFFF" : "#FF5A3C"; ctx.beginPath();
+    ctx.moveTo(x0, y - H + (k / 4) * droop + flap * k / 4); ctx.lineTo(x1, y - H + ((k + 1) / 4) * droop + flap * (k + 1) / 4);
+    ctx.lineTo(x1, y - H + 10 - (k + 1) * 1.2 + ((k + 1) / 4) * droop + flap * (k + 1) / 4); ctx.lineTo(x0, y - H + 12 - k * 1.2 + (k / 4) * droop + flap * k / 4); ctx.fill();
+  }
+}
+function drawTarget(D){
+  const x = sx(D), Z = PPM * cam.zoom; if (x < -200 || x > VW + 200) return;
+  // stand
+  ctx.strokeStyle = "#6B4A32"; ctx.lineWidth = Math.max(2, .12 * Z);
+  ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(2.3)); ctx.lineTo(x - .9 * Z, GROUND); ctx.moveTo(x + .1 * Z, sy(2.3)); ctx.lineTo(x + .6 * Z, GROUND); ctx.stroke();
+  // boss (side view: a thick straw disc seen edge-on, face turned slightly to us)
+  ctx.fillStyle = "#D9B36A"; ctx.beginPath(); ctx.ellipse(x + .12 * Z, sy(FACE_Y), .32 * Z, 1.05 * Z, 0, 0, 7); ctx.fill();
+  const cols = ["#FFFFFF", "#26232B", "#3AA6E8", "#E5423A", "#FFD23F"];
+  for (let i = 0; i < 5; i++) { ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.ellipse(x, sy(FACE_Y), .26 * Z * (1 - i * .16), FACE_R * Z * (1 - i * .2), 0, 0, 7); ctx.fill(); }
+  // flag above the target shows the wind too
+  ctx.strokeStyle = "#EEE"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(2.3)); ctx.lineTo(x - .2 * Z, sy(3.4)); ctx.stroke();
+  const w = wind(), dir = w >= 0 ? 1 : -1, s = clamp(Math.abs(w) / 6, .2, 1);
+  ctx.fillStyle = "#FFD23F"; ctx.beginPath(); ctx.moveTo(x - .2 * Z, sy(3.4)); ctx.lineTo(x - .2 * Z + dir * .7 * Z * s, sy(3.25) + Math.sin(time * 8) * 2); ctx.lineTo(x - .2 * Z, sy(3.1)); ctx.fill();
+}
+function drawArrow(x, y, ang, col, scale){
+  const Z = PPM * cam.zoom, L = .82 * Z * Math.max(.6, scale);
+  ctx.save(); ctx.translate(sx(x), sy(y)); ctx.rotate(-ang);
+  ctx.strokeStyle = "#3A2A1E"; ctx.lineWidth = Math.max(1.5, .045 * Z); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-L, 0); ctx.stroke();
+  ctx.fillStyle = "#C9CED6"; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-3, -3); ctx.lineTo(-3, 3); ctx.fill();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-L + 2, 0); ctx.lineTo(-L - 6, -6); ctx.lineTo(-L + 10, 0); ctx.lineTo(-L - 6, 6); ctx.fill();
+  ctx.restore();
+}
+function drawArcher(){
+  const Z = PPM * cam.zoom, fx = sx(0), fy = GROUND; if (fx < -100 || fx > VW + 100) return;
+  const u = Z / 24;                                // body scale
+  ctx.save(); ctx.translate(fx, fy); ctx.scale(u, u);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(0, 0, 18, 4, 0, 0, 7); ctx.fill();
+  // legs
+  ctx.strokeStyle = "#2C2340"; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-6, -2); ctx.lineTo(-3, -18); ctx.lineTo(0, -30); ctx.moveTo(8, -2); ctx.lineTo(4, -18); ctx.lineTo(0, -30); ctx.stroke();
+  // body
+  ctx.fillStyle = "#2F7F78"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-7, -54, 14, 26, 6) : ctx.rect(-7, -54, 14, 26); ctx.fill();
+  // quiver
+  ctx.fillStyle = "#8A5A3A"; ctx.save(); ctx.translate(-8, -50); ctx.rotate(-.35); ctx.fillRect(-3, 0, 6, 20); ctx.fillStyle = "#FFD23F"; ctx.fillRect(-3, -4, 2, 5); ctx.fillStyle = "#FF6B9A"; ctx.fillRect(1, -5, 2, 6); ctx.restore();
+  // head
+  ctx.fillStyle = "#F2C9A6"; ctx.beginPath(); ctx.arc(1, -62, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3A2A1E"; ctx.beginPath(); ctx.arc(-1, -64, 7, Math.PI * .9, Math.PI * 2.05); ctx.fill();
+  // arms + bow, rotated by the aim angle around the shoulder
+  const a = phase === "aim" ? angle : (arrow && !arrow.done ? angle : angle), pull = phase === "aim" && draw ? power : 0;
+  ctx.translate(2, -50); ctx.rotate(-a);
+  const bowX = 22, bend = 4 + pull * 7, half = 20;
+  ctx.strokeStyle = "#F2C9A6"; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bowX, 0); ctx.stroke();      // bow arm
+  const stringX = bowX - 4 - pull * 18;
+  ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(stringX, 1); ctx.stroke();                                                        // draw arm
+  ctx.strokeStyle = "#6B3E22"; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(bowX - 2, -half); ctx.quadraticCurveTo(bowX + bend, 0, bowX - 2, half); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bowX - 2, -half); ctx.lineTo(stringX, 0); ctx.lineTo(bowX - 2, half); ctx.stroke();
+  if (phase === "aim") { ctx.strokeStyle = "#3A2A1E"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(stringX, 0); ctx.lineTo(stringX + 30, 0); ctx.stroke(); ctx.fillStyle = players[cur] ? players[cur].color : "#FFD23F"; ctx.beginPath(); ctx.moveTo(stringX + 2, 0); ctx.lineTo(stringX - 3, -3); ctx.lineTo(stringX + 5, 0); ctx.lineTo(stringX - 3, 3); ctx.fill(); }
+  ctx.restore();
+}
+function drawFace(){
+  // picture-in-picture target face; grows big right after a hit
+  const big = phase === "look" && lastHit ? ease(clamp(lookT / .35, 0, 1)) * (lookT > 1.45 ? ease(clamp(1 - (lookT - 1.45) / .35, 0, 1)) : 1) : 0;
+  const small = Math.min(VW, VH) * .2, large = Math.min(VW * .8, VH * .45), r = lerp(small, large, big) / 2;
+  const cx = lerp(VW - r - 14, VW / 2, big), cy = lerp(GROUND + (VH - GROUND) / 2, VH * .42, big);
+  ctx.save();
+  ctx.fillStyle = "rgba(20,12,30,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r + 8, 0, 7); ctx.fill();
+  for (let i = 0; i < 10; i++) { ctx.fillStyle = RING_COL[i]; ctx.beginPath(); ctx.arc(cx, cy, r * (1 - i / 10), 0, 7); ctx.fill(); ctx.strokeStyle = i === 2 || i === 3 ? "rgba(255,255,255,.4)" : "rgba(0,0,0,.25)"; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.strokeStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.arc(cx, cy, r * .05, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 3, cy); ctx.lineTo(cx + 3, cy); ctx.moveTo(cx, cy - 3); ctx.lineTo(cx, cy + 3); ctx.stroke();
+  for (const s of stuck) if (s.face && s.end === endIdx) {
+    const hx = cx + s.fz / FACE_R * r, hy = cy - s.fy / FACE_R * r;
+    ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.arc(hx + 1.5, hy + 1.5, Math.max(3, r * .045), 0, 7); ctx.fill();
+    ctx.fillStyle = players[s.owner] ? players[s.owner].color : "#FFD23F"; ctx.strokeStyle = "#1A1020"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(hx, hy, Math.max(3, r * .045), 0, 7); ctx.fill(); ctx.stroke();
+  }
+  if (big > .6 && lastHit) {
+    ctx.font = "800 " + Math.round(r * .32) + "px Unbounded, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 6; ctx.strokeStyle = "rgba(20,12,30,.75)"; const txt = lastHit.isX ? "X" : lastHit.s ? String(lastHit.s) : "MISS";
+    ctx.strokeText(txt, cx, cy + r + r * .28); ctx.fillStyle = lastHit.s >= 9 ? "#FFD23F" : "#fff"; ctx.fillText(txt, cx, cy + r + r * .28);
+  }
+  ctx.restore();
+}
+
+/* ---------------- update ---------------- */
+function update(dt){
+  if (state !== "play") return;
+  if (keysDown.ArrowUp || keysDown.KeyW) angle = clamp(angle + .25 * dt, -.17, .8);
+  if (keysDown.ArrowDown || keysDown.KeyS) angle = clamp(angle - .25 * dt, -.17, .8);
+  if (keysDown.Space && phase === "aim" && draw) { power = clamp(power + dt * .55, 0, 1); Sound.draw(power); }
+  if (phase === "fly" && arrow) {
+    const near = dist() - arrow.x;
+    slow = near < 4 && near > -1 ? lerp(slow, .25, .2) : lerp(slow, 1, .2);
+    let t = dt * slow; while (t > 0 && !arrow.done) { const h = Math.min(t, 1 / 240); stepArrow(h); t -= h; }
+    cam.x = lerp(cam.x, Math.max(0, (arrow ? arrow.x : 0) - VW * .3 / PPM), 1 - Math.pow(.0005, dt));
+    cam.zoom = lerp(cam.zoom, near < 6 ? 1.6 : 1, 1 - Math.pow(.02, dt));
+  } else if (phase === "look") {
+    lookT += dt; const target = Math.max(0, dist() - (VW * .55) / (PPM * 1.6));
+    cam.x = lerp(cam.x, target, 1 - Math.pow(.01, dt)); cam.zoom = lerp(cam.zoom, 1.6, 1 - Math.pow(.02, dt));
+    if (lookT > 1.9) nextShot();
+  } else if (phase === "return" || phase === "aim") {
+    cam.x = lerp(cam.x, 0, 1 - Math.pow(.0008, dt)); cam.zoom = lerp(cam.zoom, 1, 1 - Math.pow(.01, dt));
+    if (phase === "return" && cam.x < .3) { phase = "aim"; cam.x = 0; }
+  }
+}
+
+/* ---------------- input ---------------- */
+cv.addEventListener("pointerdown", e => {
+  Sound.init(); if (state !== "play" || phase !== "aim") return;
+  draw = { x: e.clientX, y: e.clientY, a0: angle }; power = 0; try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+});
+cv.addEventListener("pointermove", e => {
+  if (!draw || phase !== "aim") return;
+  const dx = draw.x - e.clientX, dy = e.clientY - draw.y, len = Math.hypot(dx, dy);
+  power = clamp(len / Math.min(220, VW * .45), 0, 1);
+  if (len > 12) angle = clamp(Math.atan2(dy, Math.max(8, dx)), -.17, .8);
+  Sound.draw(power);
+});
+cv.addEventListener("pointerup", () => {
+  if (!draw || phase !== "aim") { draw = null; return; }
+  const p = power; draw = null;
+  if (p < .12) { power = .7; return; }
+  launch();
+});
+cv.addEventListener("pointercancel", () => { draw = null; });
+addEventListener("keydown", e => {
+  keysDown[e.code] = true; Sound.init();
+  if (e.code === "Space" && state === "play" && phase === "aim" && !draw) { e.preventDefault(); draw = { key: true }; power = 0; }
+  if (e.code === "KeyP" || e.code === "Escape") state === "play" ? pause() : state === "pause" && resume();
+  if (e.code === "KeyM") toggleSound();
+  if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
+});
+addEventListener("keyup", e => { keysDown[e.code] = false; if (e.code === "Space" && draw && draw.key) { draw = null; if (power >= .12) launch(); } });
+addEventListener("blur", () => { keysDown = {}; pause(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+/* ---------------- menus ---------------- */
+function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
+function refreshMenu(){
+  const t = save.daily[dayKey()];
+  $("dailyTag").textContent = "Daily range #" + dayNum(); $("sToday").textContent = t != null ? t : "–"; $("sStreak").textContent = liveStreak(); $("sBest").textContent = save.best;
+  $("dailyLbl").textContent = t != null ? "Beat today's score" : "Shoot today's range"; $("dailyMeta").textContent = t != null ? "Shot today" : "Same wind for everyone";
+}
+function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); draw = null; show("pause"); }
+function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
+function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; refreshMenu(); show("menu"); }
+function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
+function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
+const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
+tap("dailyBtn", () => startRound("daily")); tap("freeBtn", () => startRound("free")); tap("duoBtn", () => startRound("duo"));
+tap("againBtn", () => startRound(mode)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => startRound(mode)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
+
+let last = performance.now();
+function frame(now){ const dt = Math.min(.05, (now - last) / 1000); last = now; update(dt); render(state === "pause" ? 0 : dt); requestAnimationFrame(frame); }
+addEventListener("resize", layout);
+layout(); refreshMenu(); soundIcon(); winds = [1.5];
+requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+if (/[?&]debug=1/.test(location.search)) window.__ls = { info: () => ({ state, phase, endIdx, arrowIdx, cur, totals: players.map(p => p.total), wind: wind(), angle, power }), set: (a, p) => { angle = a; power = p; }, fire: () => launch() };
+})();
+</script>
+</body>
+</html>
