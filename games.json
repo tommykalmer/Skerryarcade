@@ -309,6 +309,126 @@
     "featured": 2
   },
   {
+    "slug": "bounce-breaker",
+    "title": "Bounce Breaker",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#8A6BFF",
+    "tagline": "Aim, fire a volley of balls and break the blocks before they reach the floor.",
+    "summary": "Every turn you fire all your balls at once. Bank them off the walls, break numbered blocks, grab extra balls and lasers, and stop the wall from reaching the floor.",
+    "about": [
+      "Aim with the dotted guide and let go. Your whole volley of balls fires in a stream, bouncing off walls and blocks. Each hit takes one point off a block, and a block breaks when it reaches zero. Where the first ball lands is where you fire from next turn.",
+      "After every turn the blocks move down a row and a new, tougher row appears. Fly through green rings for extra balls, hit lasers to strike a whole row or column at once and pick up coins on the way. If a block reaches the floor, the run is over.",
+      "Spend coins on new balls, or to clear the bottom rows and keep a good run going. The daily challenge gives everyone the same blocks for the day, with streaks and a score to share."
+    ],
+    "features": [
+      "Fire volleys of up to hundreds of balls",
+      "Extra balls, row and column lasers, coins",
+      "Daily challenge with streaks",
+      "6 ball styles to unlock, continue with coins"
+    ],
+    "controls": [
+      [
+        "Aim and fire",
+        "Move the mouse, click",
+        "Drag, let go"
+      ],
+      [
+        "Fine aim",
+        "← → (Shift for faster), Space to fire",
+        "Pull back below the ball"
+      ],
+      [
+        "Fast forward / recall",
+        "Space / R",
+        "Fast and Recall buttons"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Ball breaker",
+      "A round": "5 to 20 minutes",
+      "Players": "1",
+      "Progress": "Best level, coins and balls saved in this browser"
+    },
+    "keywords": "ball breaker, ballz, bricks breaker, block breaker, aim and shoot balls, daily puzzle, free online game",
+    "touchOrientation": "portrait",
+    "categories": [
+      "casual",
+      "puzzle"
+    ],
+    "tags": [
+      "Aim and shoot",
+      "Physics",
+      "Daily challenge",
+      "High score",
+      "Upgrades"
+    ],
+    "added": "2026-10-31",
+    "featured": 0
+  },
+  {
+    "slug": "stack-tower",
+    "title": "Stack Tower",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#FF8A5C",
+    "tagline": "One tap, one block. How high can you stack?",
+    "summary": "Drop each sliding block onto the tower. Whatever hangs over is cut off, so every miss makes the next drop harder. Land it perfectly and the block stays whole.",
+    "about": [
+      "A block slides across the top of your tower. Tap to drop it. The part that lands on the block below stays, the part hanging over the edge breaks off and falls, and the next block is only as big as what is left.",
+      "Land a block exactly on the one below for a perfect drop. Each perfect plays the next note of a rising tune, and from the third in a row the block starts growing back, so a long perfect run can save a tower that was getting thin.",
+      "The higher you climb, the faster the blocks slide and the sky changes from day to dusk to stars. Beat your best height to unlock new tower styles: Sunset, Candy, Aurora, Glacier and Neon."
+    ],
+    "features": [
+      "One-tap controls, a round takes a minute",
+      "Perfect drops play a tune and grow the block back",
+      "6 tower styles to unlock",
+      "Best height and perfect streak saved"
+    ],
+    "controls": [
+      [
+        "Drop a block",
+        "Click, Space or ↓",
+        "Tap anywhere"
+      ],
+      [
+        "Play again",
+        "Space",
+        "Play again button"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
+    ],
+    "facts": {
+      "Genre": "One-tap arcade",
+      "A round": "About a minute",
+      "Players": "1",
+      "Progress": "Best height and styles saved in this browser"
+    },
+    "keywords": "stack game, tower stacking, one tap game, stack blocks, tower builder, free online arcade game",
+    "touchOrientation": "any",
+    "categories": [
+      "casual"
+    ],
+    "tags": [
+      "One tap",
+      "Stacking",
+      "Reflexes",
+      "High score",
+      "Relaxing"
+    ],
+    "added": "2026-10-31",
+    "featured": 0
+  },
+  {
     "slug": "putt-cove",
     "title": "Putt Cove",
     "source": "local",
