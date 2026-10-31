@@ -314,17 +314,17 @@
     "source": "local",
     "entry": "index.html",
     "accent": "#46E0BE",
-    "tagline": "Nine holes of island mini golf with windmills, bumpers and portals.",
-    "summary": "Mini golf on a sunny island course. Bank shots off the rails, time the windmill, dodge the water and sink every putt in as few strokes as you can.",
+    "tagline": "Island mini golf with a new nine-hole course every round.",
+    "summary": "Mini golf on a sunny island. Bank shots off the rails, time the windmill, skate across the ice and dodge the water. Every round deals a fresh course, and the daily course is the same for everyone.",
     "about": [
-      "Nine handmade holes on a little island course, each with its own trick: a dogleg to bank around, a sand trap that eats your speed, a bumper alley, a spinning windmill, a lagoon in the middle of the fairway, tide slopes that push the ball sideways, a portal that jumps you across the water and a long S-shaped finale.",
+      "Every round draws nine holes from a pool of 25 handmade ones, and any of them can come flipped left to right, so you rarely play the same course twice. Rounds open gently and build to the hardest holes: bank shots, sand traps, bumper alleys, ice rinks, ferries that slide across the gap, tide slopes, portals and spinning windmills.",
       "Drag back from anywhere to aim and set the power, then let go to putt. Water costs a stroke and puts the ball back where you hit from. Sink it in one for a hole in one.",
-      "Play alone for your best round, or take turns with a friend on the same device and compare scorecards at the end."
+      "The daily course is the same nine holes for everyone that day. Post your scorecard, keep your streak going and come back tomorrow for a new one. Or take turns with a friend on the same device."
     ],
     "features": [
-      "9 handmade holes with their own tricks",
-      "Windmill, bumpers, slopes, sand, water and portals",
-      "Scorecard with birdies, eagles and holes in one",
+      "25 handmade holes, a new nine-hole course every round",
+      "Daily course with streaks and shareable scorecards",
+      "Windmills, ice, bumpers, ferries, slopes, sand, water and portals",
       "2 players take turns on one device"
     ],
     "controls": [
@@ -348,7 +348,7 @@
       "Genre": "Mini golf",
       "A round": "9 holes",
       "Players": "1, or 2 taking turns",
-      "Progress": "Best round saved in this browser"
+      "Progress": "Best round, daily score and streak saved in this browser"
     },
     "keywords": "mini golf, minigolf, putt putt, golf game, free mini golf online, 2 player golf",
     "touchOrientation": "any",

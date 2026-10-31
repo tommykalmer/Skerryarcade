@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Putt Cove: mini golf on an island course</title>
-<meta name="description" content="Nine holes of island mini golf: windmills, bumpers, sand, water and portals. Play solo for your best score or take turns with a friend.">
+<meta name="description" content="Island mini golf with a new nine-hole course every round: windmills, ice, bumpers, sand, water and portals. Play the daily course, chase your best score or take turns with a friend.">
 <meta name="theme-color" content="#0E6E8C">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700;800&display=swap">
@@ -67,6 +67,12 @@
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
   .big{font:800 clamp(2.4rem,12vw,3.6rem)/1 var(--f-display);margin:0;font-variant-numeric:tabular-nums}
   .note{font-size:.82rem;color:var(--muted);margin:0}
+  .note.tight{margin-top:-4px;font-size:.74rem}
+  .btn.daily{height:auto;min-height:58px;padding:9px 14px;background:linear-gradient(135deg,#1C8FA8,#46E0BE);color:#032A33;box-shadow:0 5px 0 #127083}
+  .btn.daily:active{transform:translateY(3px);box-shadow:0 2px 0 #127083}
+  .btn.daily span{display:grid;gap:3px;text-align:center}
+  .btn.daily b{font:800 .95rem/1 var(--f-display)}
+  .btn.daily small{font:600 .74rem/1.1 var(--f-body);opacity:.85}
   .sc{width:100%;overflow-x:auto}
   .sc table{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums}
   .sc td,.sc th{padding:6px 3px;text-align:center;border-bottom:1px solid var(--line)}
@@ -98,13 +104,15 @@
 <div class="screen" id="menu">
   <div class="card">
     <h1 class="logo">PUTT<br>COVE<span>MINI GOLF</span></h1>
-    <p class="lead">Nine island holes with windmills, bumpers, sand, water and portals. Sink every putt in as few strokes as you can.</p>
+    <p class="lead">Island mini golf with windmills, ice, bumpers, water and portals. Every round deals you a new nine-hole course.</p>
     <div class="stats">
-      <div class="stat"><b id="sBest">–</b><small>Best round</small></div>
+      <div class="stat"><b id="sBest">–</b><small>Best vs par</small></div>
       <div class="stat"><b id="sAces">0</b><small>Holes in one</small></div>
       <div class="stat"><b id="sRounds">0</b><small>Rounds played</small></div>
     </div>
     <button class="btn sun" id="soloBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>Play 9 holes</button>
+    <p class="note tight">A fresh course every round</p>
+    <button class="btn daily" id="dailyBtn"><span><b id="dailyName">Daily course</b><small id="dailySub">Same nine holes for everyone today</small></span></button>
     <button class="btn ghost" id="duoBtn">2 players, take turns</button>
     <p class="note">Max 7 strokes per hole. Water costs one stroke.</p>
   </div>
@@ -140,41 +148,111 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const SHARE_URL = "https://skerryarcade.com/putt-cove/";
 const W = 300, H = 500, BALL = 6, CUP = 10, MAX_STROKES = 7, MAX_SPEED = 760;
 
-/* ---------------- the course ----------------
+/* ---------------- the hole pool ----------------
    World is 300 x 500, y down. bounds: playable polygons (their edges are rails). blocks: solid obstacles.
-   sand / water: polygons. slopes: rects with a push. bumpers: circles. windmill: rotating cross.
-   movers: rects sliding back and forth. portal: a -> b. */
+   sand / water / ice: polygons. slopes: rects with a push. bumpers: circles. windmill: rotating cross.
+   movers: rects sliding back and forth. portal: a -> b.
+   tier 1 = gentle opener, 2 = middle of the round, 3 = closing holes. Every round draws three of each tier,
+   and any hole may be mirrored left to right, so rounds rarely repeat. */
 const R = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-const HOLES = [
-  { name: "First Putt", par: 2, tee: [150, 420], cup: [150, 92], bounds: [R(95, 40, 205, 460)],
-    blocks: [], sand: [], water: [], slopes: [], bumpers: [] },
-  { name: "Dogleg", par: 3, tee: [90, 420], cup: [222, 88],
-    bounds: [[[40, 460], [140, 460], [140, 140], [262, 140], [262, 40], [40, 40]]], blocks: [[[40, 40], [70, 40], [40, 70]]], sand: [], water: [], slopes: [], bumpers: [] },
-  { name: "Sand Trap", par: 3, tee: [150, 430], cup: [150, 80], bounds: [R(50, 40, 250, 460)],
+const POOL = [
+  /* ---- tier 1 ---- */
+  { name: "First Putt", tier: 1, par: 2, tee: [150, 420], cup: [150, 92], bounds: [R(95, 40, 205, 460)] },
+  { name: "Dogleg", tier: 1, par: 3, tee: [90, 420], cup: [222, 88],
+    bounds: [[[40, 460], [140, 460], [140, 140], [262, 140], [262, 40], [40, 40]]], blocks: [[[40, 40], [70, 40], [40, 70]]] },
+  { name: "Sand Trap", tier: 1, par: 3, tee: [150, 430], cup: [150, 80], bounds: [R(50, 40, 250, 460)],
     blocks: [R(50, 330, 105, 345), R(195, 330, 250, 345)],
-    sand: [[[95, 190], [150, 170], [205, 190], [215, 250], [150, 275], [85, 250]]], water: [], slopes: [], bumpers: [] },
-  { name: "Bumper Alley", par: 3, tee: [150, 430], cup: [150, 78], bounds: [R(60, 40, 240, 460)],
-    blocks: [], sand: [], water: [], slopes: [], bumpers: [[105, 310, 14], [195, 310, 14], [150, 245, 16], [95, 170, 13], [205, 170, 13], [150, 125, 11]] },
-  { name: "The Windmill", par: 3, tee: [150, 430], cup: [150, 84], bounds: [R(70, 40, 230, 460)],
-    blocks: [R(70, 238, 128, 262), R(172, 238, 230, 262)], sand: [], water: [], slopes: [], bumpers: [],
-    windmill: { x: 150, y: 250, len: 46, speed: 1.6 } },
-  { name: "Lagoon", par: 3, tee: [150, 440], cup: [150, 78], bounds: [R(40, 40, 260, 470)],
-    blocks: [], sand: [[[40, 120], [80, 120], [80, 160], [40, 160]]], slopes: [], bumpers: [],
+    sand: [[[95, 190], [150, 170], [205, 190], [215, 250], [150, 275], [85, 250]]] },
+  { name: "Bank Shot", tier: 1, par: 3, tee: [95, 430], cup: [205, 85], bounds: [R(50, 40, 250, 465)],
+    blocks: [R(140, 40, 160, 320)], sand: [[[195, 330], [250, 330], [250, 400], [215, 400]]] },
+  { name: "The Funnel", tier: 1, par: 2, tee: [150, 440], cup: [150, 75],
+    bounds: [[[30, 470], [270, 470], [270, 310], [185, 160], [185, 40], [115, 40], [115, 160], [30, 310]]], bumpers: [[150, 290, 13]] },
+  { name: "Uphill", tier: 1, par: 2, tee: [150, 440], cup: [150, 92], bounds: [R(80, 40, 220, 470)],
+    slopes: [{ r: [80, 150, 220, 380], f: [0, 150] }], sand: [[[95, 40], [205, 40], [205, 62], [95, 62]]] },
+  { name: "Zigzag", tier: 1, par: 3, tee: [90, 440], cup: [150, 80], bounds: [R(60, 40, 240, 470)],
+    blocks: [R(60, 330, 180, 345), R(120, 200, 240, 215)] },
+  { name: "Lighthouse", tier: 1, par: 2, tee: [150, 445], cup: [150, 70],
+    bounds: [[[95, 470], [205, 470], [255, 400], [255, 110], [205, 40], [95, 40], [45, 110], [45, 400]]],
+    blocks: [[[135, 230], [165, 230], [178, 250], [165, 270], [135, 270], [122, 250]]], bumpers: [[70, 250, 10], [230, 250, 10]] },
+
+  /* ---- tier 2 ---- */
+  { name: "Bumper Alley", tier: 2, par: 3, tee: [150, 430], cup: [150, 78], bounds: [R(60, 40, 240, 460)],
+    bumpers: [[105, 310, 14], [195, 310, 14], [150, 245, 16], [95, 170, 13], [205, 170, 13], [150, 125, 11]] },
+  { name: "Lagoon", tier: 2, par: 3, tee: [150, 440], cup: [150, 78], bounds: [R(40, 40, 260, 470)],
+    sand: [[[40, 120], [80, 120], [80, 160], [40, 160]]],
     water: [[[92, 190], [150, 172], [208, 190], [222, 260], [208, 320], [150, 338], [92, 320], [78, 260]]] },
-  { name: "Tide Slopes", par: 3, tee: [80, 440], cup: [215, 80], bounds: [R(50, 40, 250, 470)],
-    blocks: [R(50, 290, 170, 302), R(130, 170, 250, 182)], sand: [], water: [], bumpers: [],
+  { name: "Portal Point", tier: 2, par: 2, tee: [150, 430], cup: [150, 82],
+    bounds: [R(70, 300, 230, 460), R(70, 40, 230, 205)], portal: { a: [150, 322], b: [150, 182], r: 14 } },
+  { name: "Ice Rink", tier: 2, par: 2, tee: [150, 445], cup: [150, 85], bounds: [R(60, 40, 240, 470)],
+    ice: [R(60, 130, 240, 400)], bumpers: [[100, 260, 11], [200, 260, 11]] },
+  { name: "Ferry Crossing", tier: 2, par: 3, tee: [150, 440], cup: [150, 85], bounds: [R(60, 40, 240, 470)],
+    blocks: [R(60, 245, 105, 262), R(195, 245, 240, 262)], movers: [{ x: 130, y: 246, w: 40, h: 15, dx: 38, dy: 0, period: 2.4 }] },
+  { name: "S-Bend", tier: 2, par: 3, tee: [85, 440], cup: [215, 80],
+    bounds: [[[40, 470], [40, 200], [170, 200], [170, 40], [260, 40], [260, 290], [130, 290], [130, 470]]],
+    sand: [[[40, 200], [85, 200], [40, 245]]], bumpers: [[215, 245, 10]] },
+  { name: "Sandbar", tier: 2, par: 3, tee: [150, 445], cup: [150, 78], bounds: [R(45, 40, 255, 470)],
+    sand: [[[45, 300], [125, 290], [130, 340], [45, 350]], [[255, 300], [175, 290], [170, 340], [255, 350]],
+      [[115, 170], [185, 170], [195, 215], [150, 235], [105, 215]]] },
+  { name: "Frozen Bridge", tier: 2, par: 2, tee: [150, 445], cup: [150, 85], bounds: [R(55, 40, 245, 470)],
+    water: [R(55, 200, 128, 320), R(172, 200, 245, 320)], ice: [R(128, 180, 172, 340)] },
+  { name: "Tide Pools", tier: 2, par: 3, tee: [150, 445], cup: [150, 75], bounds: [R(40, 40, 260, 470)],
+    water: [[[60, 330], [100, 320], [110, 360], [70, 375]], [[200, 320], [240, 330], [230, 375], [190, 360]],
+      [[130, 240], [170, 240], [178, 270], [150, 285], [122, 270]], [[50, 150], [95, 140], [100, 185], [55, 190]], [[205, 140], [250, 150], [245, 190], [200, 185]]] },
+
+  /* ---- tier 3 ---- */
+  { name: "The Windmill", tier: 3, par: 3, tee: [150, 430], cup: [150, 84], bounds: [R(70, 40, 230, 460)],
+    blocks: [R(70, 238, 128, 262), R(172, 238, 230, 262)], windmill: { x: 150, y: 250, len: 46, speed: 1.6 } },
+  { name: "Tide Slopes", tier: 3, par: 3, tee: [80, 440], cup: [215, 80], bounds: [R(50, 40, 250, 470)],
+    blocks: [R(50, 290, 170, 302), R(130, 170, 250, 182)],
     slopes: [{ r: [50, 302, 250, 380], f: [230, 0] }, { r: [50, 182, 250, 270], f: [-230, 0] }] },
-  { name: "Portal Point", par: 2, tee: [150, 430], cup: [150, 82],
-    bounds: [R(70, 300, 230, 460), R(70, 40, 230, 205)], blocks: [], sand: [], slopes: [], bumpers: [],
-    water: [], portal: { a: [150, 322], b: [150, 182], r: 14 } },
-  { name: "Grand Finale", par: 4, tee: [70, 432], cup: [230, 70],
+  { name: "Grand Finale", tier: 3, par: 4, tee: [70, 432], cup: [230, 70],
     bounds: [[[30, 470], [270, 470], [270, 210], [110, 210], [110, 110], [270, 110], [270, 30], [30, 30], [30, 290], [190, 290], [190, 390], [30, 390]]],
-    blocks: [], water: [], bumpers: [[230, 250, 11]], sand: [[[150, 40], [200, 40], [200, 100], [150, 100]]],
+    bumpers: [[230, 250, 11]], sand: [[[150, 40], [200, 40], [200, 100], [150, 100]]],
     slopes: [{ r: [190, 300, 270, 380], f: [0, -120] }], movers: [{ x: 60, y: 240, w: 40, h: 14, dx: 46, dy: 0, period: 2.6 }] },
+  { name: "Wormhole", tier: 3, par: 3, tee: [95, 440], cup: [205, 88], bounds: [R(50, 40, 250, 470)],
+    blocks: [R(50, 250, 205, 265)], bumpers: [[205, 395, 9], [235, 360, 9]],
+    portal: { a: [225, 425], b: [95, 110], r: 11 }, sand: [[[150, 140], [250, 140], [250, 175], [150, 175]]] },
+  { name: "Cliffside", tier: 3, par: 3, tee: [100, 445], cup: [105, 80], bounds: [R(50, 40, 250, 470)],
+    water: [R(205, 150, 250, 390)], slopes: [{ r: [50, 150, 205, 390], f: [150, 0] }] },
+  { name: "Corner Mill", tier: 3, par: 3, tee: [85, 440], cup: [225, 105],
+    bounds: [[[40, 470], [130, 470], [130, 170], [260, 170], [260, 40], [40, 40]]], windmill: { x: 85, y: 105, len: 38, speed: 1.4 } },
+  { name: "Ricochet", tier: 3, par: 3, tee: [90, 440], cup: [190, 80], bounds: [R(50, 40, 250, 470)],
+    blocks: [[[50, 290], [200, 240], [200, 256], [50, 306]], [[250, 175], [100, 135], [100, 151], [250, 191]]] },
+  { name: "Long Island", tier: 3, par: 4, tee: [60, 430], cup: [230, 95], bounds: [R(30, 30, 270, 470)],
+    blocks: [R(30, 350, 210, 365), R(90, 190, 270, 205)],
+    movers: [{ x: 145, y: 260, w: 14, h: 42, dx: 0, dy: 40, period: 2.4 }],
+    bumpers: [[240, 280, 10]], ice: [R(110, 30, 190, 190)], sand: [[[245, 40], [270, 40], [270, 75], [245, 75]]] },
 ];
 
+const norm = h => Object.assign({ blocks: [], sand: [], water: [], ice: [], slopes: [], bumpers: [], movers: [] }, h);
+function mirror(h){
+  const mx = x => W - x, mp = p => [mx(p[0]), p[1]], mpoly = a => a.map(mp);
+  return Object.assign({}, h, { mirrored: true, tee: mp(h.tee), cup: mp(h.cup), bounds: h.bounds.map(mpoly),
+    blocks: h.blocks.map(mpoly), sand: h.sand.map(mpoly), water: h.water.map(mpoly), ice: h.ice.map(mpoly),
+    slopes: h.slopes.map(s => ({ r: [mx(s.r[2]), s.r[1], mx(s.r[0]), s.r[3]], f: [-s.f[0], s.f[1]] })),
+    bumpers: h.bumpers.map(([x, y, r]) => [mx(x), y, r]),
+    windmill: h.windmill && Object.assign({}, h.windmill, { x: mx(h.windmill.x), speed: -h.windmill.speed }),
+    movers: h.movers.map(m => Object.assign({}, m, { x: W - m.x - m.w, dx: -m.dx })),
+    portal: h.portal && { a: mp(h.portal.a), b: mp(h.portal.b), r: h.portal.r } });
+}
+function rng(seed){ let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// a round: three holes from each tier, shuffled, each one possibly mirrored
+function buildCourse(seed){
+  const rnd = rng(seed), out = [];
+  for (const tier of [1, 2, 3]) {
+    const set = POOL.filter(h => h.tier === tier).slice();
+    for (let i = set.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [set[i], set[j]] = [set[j], set[i]]; }
+    const pick = set.slice(0, 3); if (tier === 3) pick.sort((x, y) => x.par - y.par);
+    for (const h of pick) { const n = norm(h); out.push(rnd() < .5 ? mirror(n) : n); }
+  }
+  return out;
+}
+// daily course: the same nine holes for everyone on a given calendar day
+const dayNo = () => { const d = new Date(); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 9, 31)) / 864e5) + 1; };
+let COURSE = buildCourse(1), daily = false, dailyNo = 0;
+
 /* ---------------- saves ---------------- */
-let save = Object.assign({ best: 0, aces: 0, rounds: 0, sound: true, holeBest: {} }, SDK.load("save", {}));
+let save = Object.assign({ best: 0, bestRel: null, aces: 0, rounds: 0, sound: true, holeBest: {}, daily: { day: 0, best: 0, rel: 0 }, streak: { last: 0, n: 0 } }, SDK.load("save", {}));
 const store = () => SDK.save("save", save);
 
 /* ---------------- audio ---------------- */
@@ -227,7 +305,8 @@ function step(sim, b, t, dt, fx){
   const sp = Math.hypot(b.vx, b.vy);
   const inSand = (h.sand || []).some(p => inPoly(b.x, b.y, p));
   if (inSand && !b.sandFx) { b.sandFx = true; fx && fx("sand"); } else if (!inSand) b.sandFx = false;
-  const dec = (inSand ? 640 : 105) + sp * (inSand ? 1.6 : .55);
+  const onIce = !inSand && (h.ice || []).some(p => inPoly(b.x, b.y, p));
+  const dec = inSand ? 640 + sp * 1.6 : onIce ? 22 + sp * .12 : 105 + sp * .55;
   if (sp > 0) { const ns = Math.max(0, sp - dec * dt); b.vx *= ns / sp; b.vy *= ns / sp; }
   b.x += b.vx * dt; b.y += b.vy * dt;
   // static rails
@@ -282,14 +361,15 @@ function step(sim, b, t, dt, fx){
 let state = "menu", mode = "solo", players = [], cur = 0, holeIdx = 0, sim = null, ball = null, phase = "aim", time = 0;
 let aim = null, lastRest = null, trail = [], sinkT = 0, particles = [], splashT = 0, shotPower = 0;
 function mkPlayer(name, color){ return { name, color, scores: [] }; }
-function startRound(m){
-  mode = m; players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#FF7EB6")] : [mkPlayer("You", "#FFD23F")];
+function startRound(m, isDaily){
+  mode = m; daily = !!isDaily; dailyNo = dayNo();
+  COURSE = buildCourse(daily ? dailyNo * 7919 + 13 : (Math.random() * 4294967296) >>> 0); players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#FF7EB6")] : [mkPlayer("You", "#FFD23F")];
   holeIdx = 0; cur = 0; show(null); $("hud").hidden = false; state = "play"; startHole();
-  SDK.gameplayStart(); SDK.event("round_start", { mode });
+  SDK.gameplayStart(); SDK.event("round_start", { mode, daily });
 }
 let strokes = 0;
 function startHole(){
-  const h = HOLES[holeIdx]; sim = makeSim(h); strokes = 0;
+  const h = COURSE[holeIdx]; sim = makeSim(h); strokes = 0;
   ball = { x: h.tee[0], y: h.tee[1], vx: 0, vy: 0, z: 0, scale: 1 }; lastRest = { x: ball.x, y: ball.y }; trail = []; phase = "aim";
   layout(); hud();
   $("bNo").textContent = "HOLE " + (holeIdx + 1); $("bName").textContent = h.name; $("bPar").textContent = "Par " + h.par + (players.length > 1 ? " · " + players[cur].name : "");
@@ -331,19 +411,19 @@ function update(dt){
 const TERMS = { "-3": "ALBATROSS!", "-2": "EAGLE!", "-1": "BIRDIE!", "0": "PAR", "1": "BOGEY", "2": "DOUBLE BOGEY" };
 function holeDone(n, sunk){
   phase = "done";
-  const h = HOLES[holeIdx], p = players[cur], diff = n - h.par;
+  const h = COURSE[holeIdx], p = players[cur], diff = n - h.par;
   p.scores[holeIdx] = n;
   const term = n === 1 ? "HOLE IN ONE!" : !sunk ? "PICKED UP" : (TERMS[String(diff)] || "+" + diff);
   popup(term, n === 1 ? "#FFD23F" : diff < 0 ? "#7CF5D6" : "#FFFFFF");
   if (n === 1) { save.aces++; store(); SDK.happytime(); Sound.fanfare(5); confetti(); }
   else if (diff < 0) Sound.fanfare(3);
-  if (mode === "solo") { const hb = save.holeBest[holeIdx]; if (!hb || n < hb) { save.holeBest[holeIdx] = n; store(); } }
+  if (mode === "solo") { const hb = save.holeBest[h.name]; if (!hb || n < hb) { save.holeBest[h.name] = n; store(); } }
   SDK.event("hole_end", { hole: holeIdx + 1, strokes: n, par: h.par, mode });
   hud();
   setTimeout(() => {
     if (players.length > 1 && cur === 0) { cur = 1; startHole(); return; }
     cur = 0; holeIdx++;
-    if (holeIdx >= HOLES.length) return finish();
+    if (holeIdx >= COURSE.length) return finish();
     startHole();
   }, 1800);
 }
@@ -353,9 +433,16 @@ function confetti(){ for (let i = 0; i < 80; i++) { const a = Math.random() * 6.
 let shareTxt = "";
 function finish(){
   state = "over"; SDK.gameplayStop(); save.rounds++;
-  const par = HOLES.reduce((a, h) => a + h.par, 0), tot = p => p.scores.reduce((a, b) => a + b, 0), rel = v => v === 0 ? "E" : (v > 0 ? "+" : "−") + Math.abs(v);
+  const par = COURSE.reduce((a, h) => a + h.par, 0), tot = p => p.scores.reduce((a, b) => a + b, 0), rel = v => v === 0 ? "E" : (v > 0 ? "+" : "−") + Math.abs(v);
   let newBest = false;
-  if (mode === "solo") { const t = tot(players[0]); if (!save.best || t < save.best) { save.best = t; newBest = true; SDK.happytime(); } SDK.levelEnd("course", "done", t); }
+  let dailyBest = false;
+  if (mode === "solo") { const t = tot(players[0]), r = t - par;
+    if (save.bestRel == null || r < save.bestRel) { save.bestRel = r; newBest = true; SDK.happytime(); }
+    if (daily) {
+      if (save.daily.day !== dailyNo || t < save.daily.best) { dailyBest = save.daily.day === dailyNo; save.daily = { day: dailyNo, best: t, rel: r }; }
+      if (save.streak.last !== dailyNo) { save.streak.n = save.streak.last === dailyNo - 1 ? save.streak.n + 1 : 1; save.streak.last = dailyNo; }
+    }
+    SDK.levelEnd(daily ? "daily" : "course", "done", t); }
   store();
   const emo = (n, p) => n === 1 ? "⛳" : n < p ? "🟢" : n === p ? "⚪" : n === p + 1 ? "🟠" : "🔴";
   if (mode === "duo") {
@@ -364,12 +451,13 @@ function finish(){
     shareTxt = "Putt Cove mini golf: " + ta + " – " + tb + (w ? ", " + w.name + " wins" : ", all square") + " ⛳";
   } else {
     const t = tot(players[0]);
-    $("overSub").textContent = "9 holes · par " + par; $("overScore").textContent = t; $("overTitle").textContent = rel(t - par) + (newBest ? " · new best round!" : save.best ? " · best " + save.best : "");
-    shareTxt = "Putt Cove ⛳ " + t + " (" + rel(t - par) + ")\n" + players[0].scores.map((n, i) => emo(n, HOLES[i].par)).join("");
+    $("overSub").textContent = (daily ? "Daily course #" + dailyNo : "9 holes") + " · par " + par; $("overScore").textContent = t;
+    $("overTitle").textContent = rel(t - par) + (newBest ? " · your best round ever!" : dailyBest ? " · new best today!" : daily ? " · best today " + save.daily.best : save.bestRel != null ? " · best " + rel(save.bestRel) : "") + (daily && save.streak.n > 1 ? " · " + save.streak.n + "-day streak" : "");
+    shareTxt = "Putt Cove " + (daily ? "Daily #" + dailyNo + " " : "") + "⛳ " + t + " (" + rel(t - par) + ")\n" + players[0].scores.map((n, i) => emo(n, COURSE[i].par)).join("");
   }
   const cls = (n, p) => n === 1 ? "a" : n < p ? "u" : n > p ? "o" : "";
-  let tbl = "<table><tr><th>Hole</th>" + HOLES.map((_, i) => "<th>" + (i + 1) + "</th>").join("") + "<th>Tot</th></tr><tr><td>Par</td>" + HOLES.map(h => "<td>" + h.par + "</td>").join("") + "<td class='tot'>" + par + "</td></tr>";
-  for (const p of players) tbl += "<tr><td>" + (players.length > 1 ? p.name.replace("Player ", "P") : "You") + "</td>" + p.scores.map((n, i) => "<td><span class='" + cls(n, HOLES[i].par) + "'>&nbsp;" + n + "&nbsp;</span></td>").join("") + "<td class='tot'>" + tot(p) + "</td></tr>";
+  let tbl = "<table><tr><th>Hole</th>" + COURSE.map((_, i) => "<th>" + (i + 1) + "</th>").join("") + "<th>Tot</th></tr><tr><td>Par</td>" + COURSE.map(h => "<td>" + h.par + "</td>").join("") + "<td class='tot'>" + par + "</td></tr>";
+  for (const p of players) tbl += "<tr><td>" + (players.length > 1 ? p.name.replace("Player ", "P") : "You") + "</td>" + p.scores.map((n, i) => "<td><span class='" + cls(n, COURSE[i].par) + "'>&nbsp;" + n + "&nbsp;</span></td>").join("") + "<td class='tot'>" + tot(p) + "</td></tr>";
   $("scorecard").innerHTML = tbl + "</table>";
   $("hud").hidden = true; $("who").hidden = true; show("over");
 }
@@ -381,10 +469,10 @@ async function share(){
 
 /* ---------------- HUD ---------------- */
 function hud(){
-  const h = HOLES[holeIdx]; if (!h) return;
-  $("holeNo").textContent = "HOLE " + (holeIdx + 1) + " OF " + HOLES.length; $("holeName").textContent = h.name; $("holePar").textContent = "Par " + h.par;
+  const h = COURSE[holeIdx]; if (!h) return;
+  $("holeNo").textContent = "HOLE " + (holeIdx + 1) + " OF " + COURSE.length; $("holeName").textContent = h.name; $("holePar").textContent = "Par " + h.par;
   $("strokes").textContent = strokes;
-  const p = players[cur], done = p.scores.reduce((a, b, i) => a + b - HOLES[i].par, 0);
+  const p = players[cur], done = p.scores.reduce((a, b, i) => a + b - COURSE[i].par, 0);
   $("total").textContent = "Total " + (done === 0 ? "E" : (done > 0 ? "+" : "−") + Math.abs(done));
   const who = $("who"); who.hidden = players.length < 2; who.textContent = p.name + "'s turn"; who.style.setProperty("--c", p.color);
 }
@@ -401,7 +489,7 @@ function layout(){
   const top = 82 + safeTop() + 8, bottom = 30;
   S = Math.min((VW - 16) / W, (VH - top - bottom) / H);
   OX = (VW - W * S) / 2; OY = top + (VH - top - bottom - H * S) / 2;
-  if (HOLES[holeIdx]) courseImg = drawCourse(HOLES[holeIdx]);
+  if (COURSE[holeIdx]) courseImg = drawCourse(COURSE[holeIdx]);
 }
 function pathPoly(g, poly){ g.beginPath(); poly.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); }
 function drawCourse(h){
@@ -428,6 +516,11 @@ function drawCourse(h){
   for (const s of h.sand || []) { pathPoly(g, s); g.fillStyle = "#EED79A"; g.fill(); g.strokeStyle = "#E1C27A"; g.lineWidth = 3; g.stroke(); for (let i = 0; i < 40; i++) { const xs = s.map(p => p[0]), ys = s.map(p => p[1]); const x = lerp(Math.min(...xs), Math.max(...xs), rnd()), y = lerp(Math.min(...ys), Math.max(...ys), rnd()); if (inPoly(x, y, s)) { g.fillStyle = "rgba(160,120,50,.25)"; g.fillRect(x, y, 1.4, 1.4); } } }
   // water hazards
   for (const w of h.water || []) { pathPoly(g, w); g.fillStyle = "#2FA9D6"; g.fill(); g.strokeStyle = "#E9F8FF"; g.lineWidth = 4; g.stroke(); }
+  // ice: glassy, low friction
+  for (const w of h.ice || []) { g.save(); pathPoly(g, w); g.fillStyle = "#D6F3FF"; g.fill(); g.clip(); g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 2;
+    for (let k = -500; k < 600; k += 34) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 260, 500); g.stroke(); }
+    g.strokeStyle = "rgba(120,190,230,.35)"; g.lineWidth = 1; for (let i = 0; i < 14; i++) { const x = rnd() * W, y = rnd() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 8 + rnd() * 10, y + 4 - rnd() * 8); g.stroke(); }
+    g.restore(); pathPoly(g, w); g.strokeStyle = "#A9DDF5"; g.lineWidth = 2.5; g.stroke(); }
   g.restore();
   // blocks: raised wooden/stone boxes
   for (const b of h.blocks) { g.save(); g.translate(2, 3); pathPoly(g, b); g.fillStyle = "rgba(0,0,0,.22)"; g.fill(); g.restore(); pathPoly(g, b); g.fillStyle = "#B97A4B"; g.fill(); g.strokeStyle = "#8C5631"; g.lineWidth = 2; g.stroke(); }
@@ -448,10 +541,12 @@ function render(dt){
   // sea sparkles
   ctx.fillStyle = "rgba(255,255,255,.18)";
   for (let i = 0; i < 26; i++) { const x = (i * 137.5 + time * 6) % VW, y = (i * 89.3) % VH, s = (Math.sin(time * 1.4 + i) + 1) * 6; ctx.fillRect(x, y, s, 1.2); }
-  const h = HOLES[Math.min(holeIdx, HOLES.length - 1)];
+  const h = COURSE[Math.min(holeIdx, COURSE.length - 1)];
   ctx.save(); ctx.translate(OX, OY); ctx.scale(S, S);
   // water shimmer
-  for (const w of h.water || []) { ctx.save(); pathPoly(ctx, w); ctx.clip(); ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1.5; for (let k = 0; k < 6; k++) { const y = 180 + k * 28 + Math.sin(time * 1.5 + k) * 4; ctx.beginPath(); for (let x = 60; x < 240; x += 8) ctx.lineTo(x, y + Math.sin(x * .08 + time * 2 + k) * 2.5); ctx.stroke(); } ctx.restore(); }
+  for (const w of h.water || []) { const xs = w.map(p => p[0]), ys = w.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    ctx.save(); pathPoly(ctx, w); ctx.clip(); ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1.5;
+    for (let y = y0 + 12, k = 0; y < y1; y += 26, k++) { const yy = y + Math.sin(time * 1.5 + k) * 4; ctx.beginPath(); for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, yy + Math.sin(x * .08 + time * 2 + k) * 2.5); ctx.stroke(); } ctx.restore(); }
   // slopes: animated chevrons
   for (const s of h.slopes || []) { const [x0, y0, x1, y1] = s.r, dir = Math.atan2(s.f[1], s.f[0]);
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip(); ctx.fillStyle = "rgba(20,90,40,.12)"; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -537,15 +632,18 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pause
 
 /* ---------------- menus ---------------- */
 function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
-function refreshMenu(){ $("sBest").textContent = save.best || "–"; $("sAces").textContent = save.aces; $("sRounds").textContent = save.rounds; }
+function refreshMenu(){ const n = dayNo(), played = save.daily.day === n, r = save.bestRel, rel = v => v === 0 ? "E" : (v > 0 ? "+" : "−") + Math.abs(v);
+  $("dailyName").textContent = "Daily course #" + n;
+  $("dailySub").textContent = played ? "Today: " + save.daily.best + " (" + rel(save.daily.rel) + ")" + (save.streak.n > 1 && save.streak.last === n ? " · " + save.streak.n + "-day streak" : "") + " · play again" : "Same nine holes for everyone today";
+  $("sBest").textContent = r == null ? "–" : rel(r); $("sAces").textContent = save.aces; $("sRounds").textContent = save.rounds; }
 function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); drag = null; aim = null; show("pause"); }
 function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
 function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; $("who").hidden = true; refreshMenu(); show("menu"); }
 function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
 function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
-tap("soloBtn", () => startRound("solo")); tap("duoBtn", () => startRound("duo"));
-tap("againBtn", () => startRound(mode)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("soloBtn", () => startRound("solo")); tap("duoBtn", () => startRound("duo")); tap("dailyBtn", () => startRound("solo", true));
+tap("againBtn", () => startRound(mode, daily)); tap("menuBtn", toMenu); tap("shareBtn", share);
 tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => { show(null); state = "play"; players[cur].scores.length = holeIdx; startHole(); SDK.gameplayStart(); }); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
 
 let last = performance.now();
@@ -556,10 +654,10 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 /* course checker used during development: finds a route for every hole */
 if (/[?&]debug=1/.test(location.search)) window.__pc = {
-  HOLES, ballPos: () => ({ x: ball.x, y: ball.y }), info: () => ({ state, phase, holeIdx, strokes, cur, scores: players.map(p => p.scores) }),
+  get COURSE(){ return COURSE; }, POOL, norm, mirror, buildCourse, ballPos: () => ({ x: ball.x, y: ball.y }), info: () => ({ state, phase, holeIdx, strokes, cur, scores: players.map(p => p.scores) }),
   putt: (a, p) => putt(Math.cos(a), Math.sin(a), p),
   goto: i => { holeIdx = i; startHole(); },
-  shot(i, x, y, a, p, t0){ const s = makeSim(HOLES[i]), b = { x, y, vx: Math.cos(a) * p * MAX_SPEED, vy: Math.sin(a) * p * MAX_SPEED }; let t = t0 || 0;
+  shot(i, x, y, a, p, t0){ const s = makeSim(COURSE[i]), b = { x, y, vx: Math.cos(a) * p * MAX_SPEED, vy: Math.sin(a) * p * MAX_SPEED }; let t = t0 || 0;
     for (let k = 0; k < 240 * 12; k++) { const ev = step(s, b, t, 1 / 240, null); t += 1 / 240; if (ev && ev !== "rest") return { ev, x: b.x, y: b.y, t }; if (ev === "rest") return { ev, x: b.x, y: b.y, t }; } return { ev: "timeout", x: b.x, y: b.y, t }; }
 };
 })();
