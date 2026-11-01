@@ -313,6 +313,126 @@
     "featured": 2
   },
   {
+    "slug": "axe-spin",
+    "title": "Axe Spin",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#FF6B5A",
+    "tagline": "Throw axes into a spinning shield. Beat all six bosses.",
+    "summary": "Tap to throw. Every axe has to stick in the spinning shield without hitting the ones already there. Thirty stages, six bosses, a daily gauntlet and duels on one shield.",
+    "about": [
+      "A wooden shield spins in front of you and you hold a stack of axes. Tap to throw one. It sticks where it lands, and the next one must not hit it. Use all your axes and the shield bursts apart. Hit an axe and it is over.",
+      "Every stage spins its own way: steady, speeding up, braking, swinging back and forth. Some shields come with axes already stuck in them, and apples on the rim pay out coins. Every fifth stage is a boss, from the Old Oak and the Troll Shield to the Giant's Eye, and beating a boss sets your checkpoint and wins you its axe.",
+      "The daily gauntlet is eight stages with one life, the same for everyone that day. For two players, take turns on one shield with a friend on the same phone, or take on Sigrid, Bjorn and the Jarl. The first to hit an axe loses."
+    ],
+    "features": [
+      "30 stages and six bosses, then endless",
+      "Checkpoints after every boss and an axe to win from each",
+      "Daily gauntlet with streaks and a shareable result",
+      "Duel on one shield, with a friend or vs the computer"
+    ],
+    "controls": [
+      [
+        "Throw an axe",
+        "Click, Space or ↑",
+        "Tap anywhere"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Arcade timing",
+      "A round": "A minute per stage",
+      "Players": "1, 2 on one phone, or vs the computer",
+      "Progress": "Checkpoint, bosses and axes saved in this browser"
+    },
+    "keywords": "knife throwing game, axe throwing game, throw knives at a spinning target, timing game, free online arcade game",
+    "touchOrientation": "portrait",
+    "categories": [
+      "action",
+      "casual",
+      "two-player"
+    ],
+    "tags": [
+      "Timing",
+      "One tap",
+      "Bosses",
+      "Daily challenge",
+      "Vs computer",
+      "Play with friends"
+    ],
+    "added": "2026-11-01",
+    "featured": 0
+  },
+  {
+    "slug": "sea-glass-sort",
+    "title": "Sea Glass Sort",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#2EC4B6",
+    "tagline": "Pour the sea glass until every jar holds one colour.",
+    "summary": "A calm, clever sorting puzzle. Pour glass between jars until each jar is a single colour, in as few moves as you can. Over a hundred levels across five shores, a daily puzzle and duels.",
+    "about": [
+      "Tap a jar, then tap where it should pour. The top pieces move across, but only onto the same colour or into an empty jar, and a jar holds four. Fill every jar with a single colour to finish the level.",
+      "Every level has a par worked out by the game itself. Match it for three stars, and keep an eye on your moves: an undo or an extra jar can save you, but the jar caps you at two stars. The levels grow from three colours to twelve as you travel from Driftwood Beach to the Northern Lights. Each colour also has its own small symbol, so the game works for colourblind players too.",
+      "The daily puzzle is the same for everyone and easy to share. In a duel both players sort the same jars and the fewest moves wins. Play a friend on one phone or watch Sandy, Marina or the Tide go first and beat their count."
+    ],
+    "features": [
+      "Endless solvable levels, three to twelve colours",
+      "Three stars to chase on every level",
+      "Daily puzzle with streaks and a shareable result",
+      "Duels with a friend or vs the computer"
+    ],
+    "controls": [
+      [
+        "Pick a jar, then pour",
+        "Click a jar, then another, or press 1–9",
+        "Tap a jar, then another"
+      ],
+      [
+        "Undo / restart",
+        "Z / R",
+        "Undo and Restart buttons"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Sorting puzzle",
+      "A round": "One to five minutes",
+      "Players": "1, 2 on one phone, or vs the computer",
+      "Progress": "Levels and stars saved in this browser"
+    },
+    "keywords": "ball sort, water sort, color sort puzzle, sorting game, relaxing puzzle, daily puzzle, free online puzzle game",
+    "touchOrientation": "any",
+    "categories": [
+      "puzzle",
+      "casual",
+      "two-player"
+    ],
+    "tags": [
+      "Sorting",
+      "Relaxing",
+      "Daily puzzle",
+      "Stars",
+      "Vs computer",
+      "Colourblind friendly"
+    ],
+    "added": "2026-11-01",
+    "featured": 0
+  },
+  {
     "slug": "bounce-breaker",
     "title": "Bounce Breaker",
     "source": "local",

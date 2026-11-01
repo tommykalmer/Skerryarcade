@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Sea Glass Sort: sort the colours, collect the stars</title>
+<meta name="description" content="Pour sea glass between jars until every jar holds one colour. Hundreds of levels, three stars to chase on each, a daily puzzle and duels against a friend or the computer.">
+<meta name="theme-color" content="#0E4C5C">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700;800&display=swap">
+<script src="/assets/skerry-sdk.js"></script>
+<style>
+  :root{
+    --ink:#0A3340; --panel:rgba(6,40,52,.86); --line:rgba(220,250,255,.18);
+    --text:#F4FDFF; --muted:#A8D3DC; --sun:#FFD23F; --sun-ink:#231A00; --mint:#46E0BE; --coral:#FF7A5C;
+    --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+    --f-body:"Familjen Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--text);font:500 16px/1.4 var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  [hidden]{display:none!important}
+
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;pointer-events:none;z-index:2;
+    padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+  .hud > *{pointer-events:auto}
+  .lv{flex:1;min-width:0;display:grid;gap:2px}
+  .lv small{font:700 .64rem/1 var(--f-display);letter-spacing:.16em;color:#fff;opacity:.85;text-shadow:0 1px 6px rgba(0,30,40,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lv b{font:800 1.45rem/1.05 var(--f-display);white-space:nowrap;text-shadow:0 2px 10px rgba(0,30,40,.45)}
+  .mv{display:grid;justify-items:center;gap:2px;padding:6px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);min-width:76px}
+  .mv small{font:700 .58rem/1 var(--f-display);letter-spacing:.14em;color:var(--muted)}
+  .mv b{font:800 1.25rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+  .mv span{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .ibtn{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .ibtn svg{width:18px;height:18px}
+  .tools{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;gap:10px;z-index:2}
+  .tool{position:relative;height:48px;min-width:64px;padding:0 14px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1px solid var(--line);font:700 .78rem/1 var(--f-display)}
+  .tool svg{width:18px;height:18px}
+  .tool i{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--sun);color:var(--sun-ink);font:800 .66rem/20px var(--f-display);font-style:normal}
+  .tool:disabled{opacity:.4}
+  .turn{position:fixed;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:800 .78rem/1 var(--f-display);padding:8px 14px;border-radius:999px;background:var(--c,#FFD23F);color:#1E1400;pointer-events:none;z-index:3;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .pop{position:fixed;left:50%;top:24%;transform:translate(-50%,-50%);font:800 clamp(1.7rem,8vw,2.6rem)/1.05 var(--f-display);color:#fff;text-align:center;text-shadow:0 4px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;z-index:4;white-space:nowrap}
+  .pop small{display:block;font:700 .78rem/1 var(--f-display);letter-spacing:.22em;margin-bottom:8px;color:var(--sun)}
+  .pop.show{animation:popin 1.5s cubic-bezier(.3,1.6,.5,1) forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}26%{transform:translate(-50%,-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+
+  .screen{position:fixed;inset:0;display:flex;overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(110% 70% at 50% 15%,rgba(120,240,220,.2),transparent 60%),rgba(4,30,40,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:5}
+  .card{margin:auto;width:min(420px,100%);display:grid;gap:13px;justify-items:center;text-align:center;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+  .logo{margin:0;font:800 clamp(2.5rem,12.5vw,3.6rem)/.9 var(--f-display);letter-spacing:-.03em;color:#fff;text-shadow:0 5px 0 #11807A,0 12px 34px rgba(0,0,0,.35)}
+  .logo span{display:block;font-size:.36em;letter-spacing:.42em;margin-top:.7em;color:var(--sun);text-shadow:none}
+  .lead{margin:0;color:#DDF6FA;max-width:31ch}
+  .shores{width:100%;display:grid;gap:8px;padding:12px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .shores p{margin:0;display:flex;justify-content:space-between;font:700 .7rem/1 var(--f-display);letter-spacing:.12em;color:var(--muted)}
+  .shores p b{color:var(--sun)}
+  .shl{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .sh{display:grid;gap:4px;justify-items:center;font:700 .56rem/1.15 var(--f-display);color:var(--muted)}
+  .sh i{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-style:normal;font-size:1rem;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.12)}
+  .sh.on i{border-color:var(--sun);background:rgba(255,210,63,.18)}
+  .sh.done i{border-color:var(--mint);background:rgba(70,224,190,.2)}
+  .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+  .bar b{display:block;height:100%;background:linear-gradient(90deg,var(--mint),var(--sun));border-radius:99px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;border-radius:18px;font:800 1rem/1 var(--f-display);transition:transform .12s,box-shadow .12s}
+  .btn svg{width:18px;height:18px}
+  .btn span{display:grid;gap:3px}
+  .btn small{font:600 .74rem/1 var(--f-body);opacity:.8}
+  .btn.sun{background:var(--sun);color:var(--sun-ink);box-shadow:0 6px 0 #C89A00,0 14px 30px -8px rgba(255,210,63,.55)}
+  .btn.sun:active{transform:translateY(4px);box-shadow:0 2px 0 #C89A00}
+  .btn.daily{height:auto;min-height:56px;padding:9px 14px;background:linear-gradient(135deg,#1C8FA8,#46E0BE);color:#032A33;box-shadow:0 5px 0 #127083}
+  .btn.daily:active{transform:translateY(3px);box-shadow:0 2px 0 #127083}
+  .btn.daily b{font:800 .95rem/1 var(--f-display)}
+  .btn.daily small{font:600 .74rem/1.1 var(--f-body);opacity:.85}
+  .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+  .big{font:800 clamp(2.2rem,11vw,3.2rem)/1.02 var(--f-display);margin:0}
+  .kicker{font:700 .76rem/1 var(--f-display);letter-spacing:.2em;color:var(--muted);margin:0}
+  .note{font-size:.82rem;color:var(--muted);margin:0}
+  .stars{display:flex;gap:10px;justify-content:center}
+  .stars svg{width:52px;height:52px;color:rgba(255,255,255,.15);transform:scale(.6);opacity:.4;transition:transform .35s cubic-bezier(.3,1.8,.5,1),opacity .2s,color .2s}
+  .stars svg.on{color:var(--sun);transform:scale(1);opacity:1;filter:drop-shadow(0 4px 14px rgba(255,210,63,.6))}
+  .stars svg:nth-child(2){transform:scale(.6) translateY(-8px)}
+  .stars svg.on:nth-child(2){transform:scale(1.18) translateY(-8px)}
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+
+  @media (max-height:700px){.lead{display:none}.card{gap:9px}.logo{font-size:2.3rem}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Sea Glass Sort"></canvas>
+<div class="hud" id="hud" hidden>
+  <button class="ibtn" id="menuTop" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <div class="lv"><small id="lvKick">DRIFTWOOD BEACH</small><b id="lv">Level 1</b></div>
+  <div class="mv"><small>MOVES</small><b id="moves">0</b><span id="par">par 10</span></div>
+  <button class="ibtn" id="soundBtn" aria-label="Sound on or off"></button>
+</div>
+<div class="tools" id="tools" hidden>
+  <button class="tool" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo<i id="undoN">5</i></button>
+  <button class="tool" id="restartBtn" aria-label="Restart level"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/></svg>Restart</button>
+  <button class="tool" id="jarBtn" aria-label="Add an empty jar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 3h8M9 3v3c-2 1-3 3-3 5v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8c0-2-1-4-3-5V3"/><path d="M12 11v6M9 14h6"/></svg>Jar<i id="jarN">1</i></button>
+</div>
+<div class="turn" id="turn" hidden></div>
+<div class="pop" id="pop"></div>
+
+<div class="screen" id="menu">
+  <div class="card">
+    <h1 class="logo">SEA GLASS<span>SORT</span></h1>
+    <p class="lead">Pour the glass between jars until every jar holds a single colour. Fewer moves, more stars.</p>
+    <div class="shores">
+      <p><span id="shoreTxt">DRIFTWOOD BEACH</span><span><b id="starTot">0</b> ★</span></p>
+      <div class="shl" id="shores"></div>
+      <div class="bar"><b id="bar" style="width:0%"></b></div>
+    </div>
+    <button class="btn sun" id="playBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span><b id="playLbl">Play level 1</b><small id="playSub">3 colours</small></span></button>
+    <button class="btn daily" id="dailyBtn"><span><b id="dailyName">Daily puzzle</b><small id="dailySub">Same jars for everyone today</small></span></button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, same jars</button>
+    </div>
+    <p class="note">Tap a jar, then tap where it should pour. Only matching colours stack.</p>
+  </div>
+</div>
+<div class="screen" id="win" hidden>
+  <div class="card">
+    <p class="kicker" id="winKick">LEVEL 1</p>
+    <div class="stars" id="stars">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z"/></svg>
+    </div>
+    <h2 class="big" id="winBig">Sorted!</h2>
+    <p class="note" id="winSub"></p>
+    <button class="btn sun" id="nextBtn"><span id="nextLbl">Next level</span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg></button>
+    <div class="row2"><button class="btn ghost" id="replayBtn">Replay</button><button class="btn ghost" id="shareBtn">Share</button></div>
+    <button class="btn ghost" id="winMenu" style="height:44px">Menu</button>
+  </div>
+</div>
+<div class="screen" id="turnCard" hidden>
+  <div class="card">
+    <p class="kicker" id="tcKick">DUEL</p>
+    <h2 class="big" id="tcBig">Player 2</h2>
+    <p class="note" id="tcSub"></p>
+    <button class="btn sun" id="tcBtn">Start</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const SDK = window.SkerrySDK || { gameplayStart(){}, gameplayStop(){}, happytime(){}, levelEnd(){}, event(){},
+  save(k, v){ try { localStorage.setItem("seaglass." + k, JSON.stringify(v)); } catch (e) {} },
+  load(k, d){ try { const v = localStorage.getItem("seaglass." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } } };
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const SHARE_URL = "https://skerryarcade.com/sea-glass-sort/";
+/* ---------------- puzzle core: generation and solving ----------------
+   A jar is an array of colour ids, bottom first. CAP pieces fit in a jar. */
+const CAP = 4;
+function rngS(seed){ let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const topRun = j => { if (!j.length) return 0; const c = j[j.length - 1]; let n = 0; for (let i = j.length - 1; i >= 0 && j[i] === c; i--) n++; return n; };
+const uniform = j => j.length > 0 && j.every(c => c === j[0]);
+function canPour(s, i, j){
+  if (i === j) return 0; const a = s[i], b = s[j];
+  if (!a.length || b.length >= CAP) return 0;
+  if (b.length && b[b.length - 1] !== a[a.length - 1]) return 0;
+  return Math.min(topRun(a), CAP - b.length);
+}
+function pour(s, i, j){ const n = canPour(s, i, j); if (!n) return 0; for (let k = 0; k < n; k++) s[j].push(s[i].pop()); return n; }
+const solved = s => s.every(j => j.length === 0 || (j.length === CAP && uniform(j)));
+const keyOf = s => s.map(j => j.join(",")).sort().join("|");
+function heur(s){ let segs = 0; const seen = new Map(); for (const j of s) { for (let i = 0; i < j.length; i++) if (i === 0 || j[i] !== j[i - 1]) { segs++; seen.set(j[i], (seen.get(j[i]) || 0) + 1); } }
+  return segs - seen.size; }
+// moves worth considering: no pouring a finished or single-colour jar into an empty one
+function movesOf(s){
+  const out = [];
+  for (let i = 0; i < s.length; i++) { const a = s[i]; if (!a.length || (a.length === CAP && uniform(a))) continue;
+    let emptyDone = false;
+    for (let j = 0; j < s.length; j++) { const n = canPour(s, i, j); if (!n) continue;
+      if (!s[j].length) { if (uniform(a) || emptyDone) continue; emptyDone = true; }
+      if (s[j].length && n < topRun(a) && !uniform(s[j])) continue;       // splitting a run onto a mixed jar rarely helps
+      out.push([i, j]); } }
+  return out;
+}
+// weighted best-first search; returns a list of [from, to] moves or null
+function solve(start, cap = 60000, w = 2.2){
+  const clone = s => s.map(j => j.slice());
+  const heap = [], push = n => { heap.push(n); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p].f <= heap[i].f) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l].f < heap[m].f) m = l; if (r < heap.length && heap[r].f < heap[m].f) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const seen = new Map(); push({ s: clone(start), g: 0, f: 0, path: null }); seen.set(keyOf(start), 0);
+  let n = 0;
+  while (heap.length && n++ < cap) {
+    const cur = pop();
+    if (solved(cur.s)) { const out = []; for (let p = cur.path; p; p = p.prev) out.push(p.m); return out.reverse(); }
+    for (const m of movesOf(cur.s)) { const s2 = clone(cur.s); pour(s2, m[0], m[1]); const k = keyOf(s2), g = cur.g + 1;
+      if (seen.has(k) && seen.get(k) <= g) continue; seen.set(k, g); push({ s: s2, g, f: g + w * heur(s2), path: { m, prev: cur.path } }); }
+  }
+  return null;
+}
+function makePuzzle(colors, empties, seed){
+  for (let tries = 0; tries < 40; tries++) {
+    const r = rngS(seed + tries * 7919), pieces = [];
+    for (let c = 0; c < colors; c++) for (let k = 0; k < CAP; k++) pieces.push(c);
+    for (let i = pieces.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pieces[i], pieces[j]] = [pieces[j], pieces[i]]; }
+    const s = []; for (let c = 0; c < colors; c++) s.push(pieces.slice(c * CAP, c * CAP + CAP));
+    for (let e = 0; e < empties; e++) s.push([]);
+    // reject boards that start with a finished jar or three of a kind on top
+    if (s.some(j => j.length === CAP && uniform(j)) || s.some(j => topRun(j) >= 3)) continue;
+    let best = null;
+    for (const w of [2.2, 1.6, 3]) { const sol = solve(s, colors > 9 ? 45000 : 60000, w); if (sol && (!best || sol.length < best.length)) best = sol; if (best && colors <= 5) break; }
+    if (best) return { jars: s, par: best.length, solution: best };
+  }
+  return null;
+}
+if (typeof module !== "undefined") module.exports = { CAP, makePuzzle, solve, canPour, pour, solved, movesOf };
+
+
+/* ---------------- content ---------------- */
+const COLORS = [
+  { c: "#2EC4B6", s: "dot" }, { c: "#3A6FF7", s: "ring" }, { c: "#F4A62A", s: "tri" }, { c: "#F25F9A", s: "heart" },
+  { c: "#8BD346", s: "leaf" }, { c: "#A77BF3", s: "diamond" }, { c: "#FF6B4A", s: "square" }, { c: "#E9F1F7", s: "wave" },
+  { c: "#FFD93D", s: "star" }, { c: "#1E9E5A", s: "plus" }, { c: "#9A6440", s: "bars" }, { c: "#4A4E69", s: "x" },
+];
+const SHORES = [
+  { name: "Driftwood Beach", icon: "🪵", sky: ["#7FD3E0", "#2B8FA8"], sand: "#F2DDA4" },
+  { name: "Mussel Bay", icon: "🐚", sky: ["#8FD8C8", "#1F7F86"], sand: "#E8D2A0" },
+  { name: "Kelp Lagoon", icon: "🌿", sky: ["#6CC7B0", "#126B6E"], sand: "#D9C79A" },
+  { name: "Lighthouse Point", icon: "🗼", sky: ["#F7B58A", "#3A5F8F"], sand: "#E9C99A" },
+  { name: "Northern Lights", icon: "🌌", sky: ["#2E3A78", "#0B1438"], sand: "#8E9AB8" },
+];
+const PER_SHORE = 20;
+const shoreOf = lv => Math.min(SHORES.length - 1, Math.floor((lv - 1) / PER_SHORE));
+const colorsFor = lv => lv <= 2 ? 3 : lv <= 5 ? 4 : lv <= 9 ? 5 : lv <= 14 ? 6 : lv <= 20 ? 7 : lv <= 28 ? 8 : lv <= 38 ? 9 : lv <= 50 ? 10 : lv <= 65 ? 11 : 12;
+const starsFor = (moves, par, usedJar) => { const s = moves <= par + Math.ceil(par * .1) ? 3 : moves <= Math.ceil(par * 1.4) ? 2 : 1; return usedJar ? Math.min(2, s) : s; };
+
+/* ---------------- saves ---------------- */
+let save = Object.assign({ level: 1, stars: {}, sound: true, daily: { day: 0, best: 0, stars: 0 }, streak: { last: 0, n: 0 }, beaten: {}, solved: 0 }, SDK.load("save", {}));
+const store = () => SDK.save("save", save);
+const starTotal = () => Object.values(save.stars).reduce((a, b) => a + b, 0);
+const dayNo = () => { const d = new Date(); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 9, 31)) / 864e5) + 1; };
+
+/* ---------------- audio ---------------- */
+const Sound = (() => {
+  let ctx = null, master = null;
+  function init(){ if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = save.sound ? .8 : 0; master.connect(ctx.destination); } catch (e) { ctx = null; } }
+  const ok = () => ctx && save.sound;
+  function tone(f, t, dur, type, vol, to){ const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }
+  const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+  return { init,
+    setOn(on){ if (master) master.gain.setTargetAtTime(on ? .8 : 0, ctx.currentTime, .02); },
+    lift(){ if (!ok()) return; const t = ctx.currentTime; tone(520, t, .07, "sine", .1, 700); },
+    clink(k){ if (!ok()) return; const t = ctx.currentTime, f = 1200 + k * 160; tone(f, t, .12, "sine", .14); tone(f * 2.76, t, .06, "sine", .04); },
+    nope(){ if (!ok()) return; const t = ctx.currentTime; tone(180, t, .12, "triangle", .14, 140); },
+    full(c){ if (!ok()) return; const t = ctx.currentTime, b = 523 * Math.pow(2, PENTA[c % PENTA.length] / 12); [1, 1.25, 1.5].forEach((m, i) => tone(b * m, t + i * .06, .5, "triangle", .1)); },
+    win(){ if (!ok()) return; const t = ctx.currentTime; [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, t + i * .09, .45, "triangle", .12)); },
+    undo(){ if (!ok()) return; tone(700, ctx.currentTime, .08, "sine", .08, 420); },
+    click(){ if (!ok()) return; tone(880, ctx.currentTime, .05, "triangle", .08); }
+  };
+})();
+const buzz = p => { try { if (save.sound && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) {} };
+
+/* ---------------- state ---------------- */
+let state = "menu", mode = "campaign";   // campaign | daily | duo | bot
+let puzzle = null, jars = [], hist = [], sel = -1, moves = 0, undos = 5, extraJar = 0, usedJar = false, anims = [], fx = [], shake = [], doneJars = new Set(), time = 0, t0 = 0, levelNo = 1, won = false;
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(save.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; save.beaten = save.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ save.beaten = save.beaten || {}; const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "sandy", name: "Sandy", short: "Sandy", face: "S", color: "#46E0BE", blurb: "Pours first, thinks later", w: 4.5, extra: 6, p: .3 },
+  { id: "marina", name: "Marina", short: "Marina", face: "M", color: "#FFA53D", blurb: "Tidy, rarely wasteful", w: 2.6, extra: 2, p: .12 },
+  { id: "tide", name: "The Tide", short: "Tide", face: "T", color: "#FF6B9A", blurb: "Finds the short way", w: 1.6, extra: 0, p: 0 },
+];
+let rival = RIVALS[0], players = [], turnP = 0, botQueue = null, botT = 0;
+const duel = () => mode === "duo" || mode === "bot";
+
+function setupPuzzle(p){
+  puzzle = p; jars = p.jars.map(j => j.slice()); hist = []; sel = -1; moves = 0; undos = 5; extraJar = 1; usedJar = false; anims = []; fx = []; doneJars = new Set(); won = false; t0 = time;
+  jars.forEach((j, i) => { if (j.length === CAP && uniform(j)) doneJars.add(i); });
+  layout(); hud();
+}
+function startLevel(m, arg){
+  mode = m; state = "play"; show(null); $("hud").hidden = false; $("tools").hidden = false; $("turn").hidden = true;
+  if (m === "campaign") { levelNo = arg || save.level; setupPuzzle(makePuzzle(colorsFor(levelNo), 2, levelNo * 7919 + 11)); popup("LEVEL " + levelNo, SHORES[shoreOf(levelNo)].name.toUpperCase()); }
+  else if (m === "daily") { setupPuzzle(makePuzzle(10, 2, dayNo() * 104729 + 3)); popup("DAILY #" + dayNo(), "SAME FOR EVERYONE"); }
+  SDK.gameplayStart(); SDK.event("level_start", { mode, level: m === "campaign" ? levelNo : 0 });
+}
+
+/* ---------------- duels ----------------
+   Both players sort exactly the same jars, one after the other. Fewest moves wins; time breaks a tie.
+   The computer goes first so you know the number to beat. */
+function startDuel(m, r){
+  mode = m; if (r) rival = r; turnP = 0;
+  const p = makePuzzle(7, 2, (Math.random() * 1e9) | 0);
+  players = m === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }] : [{ name: rival.name, color: rival.color, bot: true }, { name: "You", color: "#FFD23F" }];
+  players.forEach(pl => { pl.moves = null; pl.time = null; });
+  puzzle = p; state = "turncard"; $("hud").hidden = true; $("tools").hidden = true;
+  const first = players[0];
+  turnCard(m === "bot" ? "YOU VS " + rival.name.toUpperCase() : "DUEL · SAME JARS FOR BOTH", first.bot ? rival.name + " goes first" : "Player 1",
+    first.bot ? "Watch " + rival.name + " sort these jars, then beat the number of moves." : "Sort the jars in as few moves as you can. Then hand the phone to Player 2.", first.bot ? "Watch" : "Start");
+  SDK.event("round_start", { mode, rival: m === "bot" ? rival.id : "" });
+}
+function beginTurn(){
+  const p = players[turnP]; state = "play"; show(null); $("hud").hidden = false; $("tools").hidden = !!p.bot;
+  setupPuzzle(puzzle);
+  const t = $("turn"); t.hidden = false; t.style.setProperty("--c", p.color);
+  const other = players[1 - turnP];
+  t.textContent = p.bot ? p.name + " is sorting…" : (mode === "bot" ? "Beat " + other.moves + " moves" : p.name + (other.moves != null ? " · beat " + other.moves : ""));
+  if (p.bot) { botQueue = botMoves(puzzle.jars, rival); botT = .9; }
+  SDK.gameplayStart();
+}
+function botMoves(start, r){
+  // a real attempt: plan with a search that is greedier (or not) by skill, and now and then pour on a hunch
+  const s = start.map(j => j.slice()), out = []; let extra = r.extra, guard = 0;
+  while (!solved(s) && guard++ < 400) {
+    if (extra > 0 && Math.random() < r.p) { const ms = movesOf(s); if (ms.length) { const m = ms[Math.floor(Math.random() * ms.length)]; pour(s, m[0], m[1]); out.push(m); extra--; continue; } }
+    const sol = solve(s, 30000, r.w) || solve(s, 60000, 2.2); if (!sol || !sol.length) break;
+    const take = extra > 0 ? Math.min(sol.length, 2 + Math.floor(Math.random() * 3)) : sol.length;
+    for (let k = 0; k < take; k++) { pour(s, sol[k][0], sol[k][1]); out.push(sol[k]); }
+  }
+  if (r.extra === 0 && out.length > puzzle.par) return puzzle.solution.slice();
+  return out;
+}
+function turnDone(){
+  const p = players[turnP]; p.moves = moves; p.time = time - t0; SDK.gameplayStop();
+  if (turnP === 0) {
+    turnP = 1; state = "turncard"; $("turn").hidden = true; $("tools").hidden = true;
+    setTimeout(() => turnCard(mode === "bot" ? rival.name + " SORTED IT IN " + p.moves : "PLAYER 1: " + p.moves + " MOVES", mode === "bot" ? "Your turn" : "Player 2",
+      mode === "bot" ? "Same jars. Sort them in fewer than " + p.moves + " moves to win." : "Same jars. Beat " + p.moves + " moves to win. A tie goes to the faster player.", "Start"), 900);
+    return;
+  }
+  const [a, b] = players; let w = a.moves === b.moves ? (a.time <= b.time ? a : b) : a.moves < b.moves ? a : b;
+  state = "over"; $("turn").hidden = true; $("tools").hidden = true;
+  let unl = "";
+  const youWon = mode === "bot" && !w.bot;
+  if (youWon) { unl = beatRival(rival); SDK.happytime(); }
+  SDK.event("duel_end", { mode, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (youWon ? 1 : 0) : -1 });
+  setTimeout(() => {
+    $("winKick").textContent = mode === "bot" ? "YOU VS " + rival.name.toUpperCase() : "DUEL";
+    $("winBig").textContent = mode === "bot" ? (youWon ? "You win!" : rival.name + " wins") : w.name + " wins!"; $("winBig").style.color = w.color;
+    const nm = p => p.bot ? p.name : mode === "bot" ? "You" : p.name;
+    $("winSub").textContent = players.map(p => nm(p) + ": " + p.moves + " moves").join(" · ") + (a.moves === b.moves ? " · decided on time" : "") + (unl ? " · " + unl : "");
+    [...$("stars").children].forEach(s => s.classList.remove("on")); $("stars").hidden = true;
+    $("nextLbl").textContent = "Rematch"; $("replayBtn").hidden = true;
+    show("win"); Sound.win();
+  }, 900);
+}
+function turnCard(kick, big, sub, btn){ $("tcKick").textContent = kick; $("tcBig").textContent = big; $("tcSub").textContent = sub; $("tcBtn").textContent = btn; show("turnCard"); }
+
+/* ---------------- playing ---------------- */
+function tapJar(i){
+  if (state !== "play" || won || (duel() && players[turnP].bot)) return;
+  if (sel < 0) { if (!jars[i].length || doneJars.has(i)) { if (doneJars.has(i)) wiggle(i); return; } sel = i; Sound.lift(); buzz(5); return; }
+  if (sel === i) { sel = -1; return; }
+  if (!tryPour(sel, i)) { const prev = sel; sel = -1; if (jars[i].length && !doneJars.has(i)) { sel = i; Sound.lift(); } else { wiggle(prev); Sound.nope(); buzz([10, 30, 10]); } }
+}
+function tryPour(i, j){
+  const n = canPour(jars, i, j); if (!n) return false;
+  const col = jars[i][jars[i].length - 1];
+  for (let k = 0; k < n; k++) {
+    const fromSlot = jars[i].length - 1, toSlot = jars[j].length;
+    jars[j].push(jars[i].pop());
+    anims.push({ c: col, i, j, fromSlot, toSlot, t: -k * .06, dur: .34 });
+  }
+  hist.push([i, j, n]); moves++; sel = -1;
+  setTimeout(() => Sound.clink(Math.min(jars[j].length, 6)), 260);
+  if (jars[j].length === CAP && uniform(jars[j]) && !doneJars.has(j)) { doneJars.add(j); setTimeout(() => { Sound.full(col); buzz(12); sparkle(j); }, 420); }
+  hud();
+  if (solved(jars)) { won = true; setTimeout(levelWon, 900); }
+  return true;
+}
+function undo(){
+  if (state !== "play" || won || !hist.length || undos <= 0 || anims.length) return;
+  const [i, j, n] = hist.pop(); for (let k = 0; k < n; k++) jars[i].push(jars[j].pop());
+  if (doneJars.has(j) && !(jars[j].length === CAP && uniform(jars[j]))) doneJars.delete(j);
+  undos--; moves++; sel = -1; Sound.undo(); hud();
+}
+function addJar(){
+  if (state !== "play" || won || extraJar <= 0) return;
+  extraJar--; usedJar = true; jars.push([]); layout(); hud(); Sound.lift(); toast("An extra jar. This level now gives at most two stars");
+}
+function restart(){ if (state !== "play" || won) return; setupPuzzle(puzzle); if (duel()) { /* moves restart, the clock keeps running */ } }
+function levelWon(){
+  if (duel()) return turnDone();
+  state = "won"; SDK.gameplayStop(); Sound.win(); buzz([20, 40, 20, 40, 80]);
+  const st = starsFor(moves, puzzle.par, usedJar);
+  save.solved++;
+  if (mode === "campaign") {
+    save.stars[levelNo] = Math.max(save.stars[levelNo] || 0, st);
+    if (levelNo === save.level) save.level++;
+    const sh = shoreOf(levelNo); if (levelNo % PER_SHORE === 0 && sh < SHORES.length - 1) setTimeout(() => toast(SHORES[sh + 1].name + " unlocked!"), 900);
+    SDK.levelEnd("level_" + levelNo, "win", moves);
+  } else {
+    const dn = dayNo(); if (save.daily.day !== dn || moves < save.daily.best) save.daily = { day: dn, best: moves, stars: st };
+    if (save.streak.last !== dn) { save.streak.n = save.streak.last === dn - 1 ? save.streak.n + 1 : 1; save.streak.last = dn; }
+    SDK.levelEnd("daily", "win", moves);
+  }
+  store(); if (st === 3) SDK.happytime();
+  for (let k = 0; k < 90; k++) confetti();
+  setTimeout(() => {
+    $("stars").hidden = false; $("replayBtn").hidden = false; $("winBig").style.color = "";
+    $("winKick").textContent = mode === "daily" ? "DAILY PUZZLE #" + dayNo() : "LEVEL " + levelNo;
+    $("winBig").textContent = st === 3 ? "Perfect!" : st === 2 ? "Sorted!" : "Done!";
+    $("winSub").textContent = moves + " moves · par " + puzzle.par + (usedJar ? " · extra jar used" : "") + (st < 3 ? " · " + (puzzle.par + Math.ceil(puzzle.par * .1)) + " or fewer for three stars" : "") + (mode === "daily" && save.streak.n > 1 ? " · " + save.streak.n + "-day streak" : "");
+    $("nextLbl").textContent = mode === "daily" ? "Play the levels" : "Next level";
+    [...$("stars").children].forEach((s, k) => { s.classList.remove("on"); setTimeout(() => { if (k < st) { s.classList.add("on"); Sound.clink(k * 3); } }, 250 + k * 260); });
+    show("win");
+  }, 700);
+}
+
+/* ---------------- rendering ---------------- */
+const cv = $("game"), ctx = cv.getContext("2d");
+let DPR = 1, VW = 0, VH = 0, JW = 50, PH = 30, JH = 150, pos = [];
+function layout(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5); VW = innerWidth; VH = innerHeight;
+  cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
+  const n = Math.max(1, jars.length), top = /[?&]cover=1/.test(location.search) ? 4 : 96, bottom = /[?&]cover=1/.test(location.search) ? 4 : 92, rows = n > 6 || (n > 5 && VW < 380) ? 2 : 1, per = Math.ceil(n / rows);
+  const availH = VH - top - bottom, gapX = 12;
+  const cover = /[?&]cover=1/.test(location.search);
+  JW = Math.min(cover ? 98 : 70, (Math.min(VW, cover ? 1200 : 620) - 24 - gapX * (per - 1)) / per);
+  PH = Math.min(JW * .64, (availH / rows - 46) / CAP);
+  JW = Math.min(JW, PH / .55);
+  JH = PH * CAP + PH * .55;
+  const rowH = JH + 40, totalH = rows * rowH, y0 = top + Math.max(0, (availH - totalH) / 2) + 20;
+  pos = [];
+  for (let r = 0; r < rows; r++) { const cnt = r === rows - 1 ? n - per * (rows - 1) : per, rowW = cnt * JW + (cnt - 1) * gapX, x0 = (VW - rowW) / 2;
+    for (let k = 0; k < cnt; k++) pos.push({ x: x0 + k * (JW + gapX), y: y0 + r * rowH }); }
+}
+// where a piece sits: slot 0 is the bottom
+function slotXY(i, slot){ const p = pos[i], lift = i === sel ? -14 : 0; return [p.x + JW / 2, p.y + JH - PH * .32 - (slot + .5) * PH + lift]; }
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function symbol(s, x, y, r){
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = Math.max(1.4, r * .18); ctx.lineCap = "round"; ctx.lineJoin = "round"; const k = r * .42;
+  switch (s) {
+    case "dot": ctx.beginPath(); ctx.arc(0, 0, k * .45, 0, 7); ctx.fill(); break;
+    case "ring": ctx.beginPath(); ctx.arc(0, 0, k * .6, 0, 7); ctx.stroke(); break;
+    case "tri": ctx.beginPath(); ctx.moveTo(0, -k * .7); ctx.lineTo(k * .65, k * .5); ctx.lineTo(-k * .65, k * .5); ctx.closePath(); ctx.fill(); break;
+    case "heart": ctx.beginPath(); ctx.moveTo(0, k * .6); ctx.bezierCurveTo(-k, 0, -k * .4, -k * .8, 0, -k * .25); ctx.bezierCurveTo(k * .4, -k * .8, k, 0, 0, k * .6); ctx.fill(); break;
+    case "leaf": ctx.beginPath(); ctx.ellipse(0, 0, k * .7, k * .35, -.7, 0, 7); ctx.fill(); break;
+    case "diamond": ctx.beginPath(); ctx.moveTo(0, -k * .7); ctx.lineTo(k * .5, 0); ctx.lineTo(0, k * .7); ctx.lineTo(-k * .5, 0); ctx.closePath(); ctx.fill(); break;
+    case "square": ctx.fillRect(-k * .45, -k * .45, k * .9, k * .9); break;
+    case "wave": ctx.strokeStyle = "rgba(40,60,80,.4)"; ctx.beginPath(); ctx.moveTo(-k * .7, 0); ctx.quadraticCurveTo(-k * .35, -k * .5, 0, 0); ctx.quadraticCurveTo(k * .35, k * .5, k * .7, 0); ctx.stroke(); break;
+    case "star": ctx.fillStyle = "rgba(150,100,0,.45)"; ctx.beginPath(); for (let a = 0; a < 10; a++) { const rad = a % 2 ? k * .3 : k * .7, an = a * Math.PI / 5 - Math.PI / 2; ctx.lineTo(Math.cos(an) * rad, Math.sin(an) * rad); } ctx.closePath(); ctx.fill(); break;
+    case "plus": ctx.beginPath(); ctx.moveTo(-k * .55, 0); ctx.lineTo(k * .55, 0); ctx.moveTo(0, -k * .55); ctx.lineTo(0, k * .55); ctx.stroke(); break;
+    case "bars": ctx.beginPath(); ctx.moveTo(-k * .5, -k * .25); ctx.lineTo(k * .5, -k * .25); ctx.moveTo(-k * .5, k * .25); ctx.lineTo(k * .5, k * .25); ctx.stroke(); break;
+    case "x": ctx.beginPath(); ctx.moveTo(-k * .45, -k * .45); ctx.lineTo(k * .45, k * .45); ctx.moveTo(k * .45, -k * .45); ctx.lineTo(-k * .45, k * .45); ctx.stroke(); break;
+  }
+  ctx.restore();
+}
+function piece(c, x, y, glow){
+  const w = JW * .78, h = PH * .86, col = COLORS[c].c;
+  ctx.save(); ctx.translate(x, y);
+  if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 16; }
+  const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2); g.addColorStop(0, col); g.addColorStop(1, shade(col, -.22));
+  rr(-w / 2, -h / 2, w, h, h * .42); ctx.fillStyle = g; ctx.fill(); ctx.shadowBlur = 0;
+  // frosted sea-glass sheen
+  ctx.globalAlpha = .35; rr(-w / 2 + 3, -h / 2 + 2, w - 6, h * .38, h * .3); ctx.fillStyle = "#fff"; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1; rr(-w / 2 + .5, -h / 2 + .5, w - 1, h - 1, h * .42); ctx.stroke();
+  symbol(COLORS[c].s, 0, h * .06, h * .9);
+  ctx.restore();
+}
+const shadeCache = {};
+function shade(hex, k){ const key = hex + k; if (shadeCache[key]) return shadeCache[key]; const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(clamp(r + r * k, 0, 255)); g = Math.round(clamp(g + g * k, 0, 255)); b = Math.round(clamp(b + b * k, 0, 255)); return shadeCache[key] = "rgb(" + r + "," + g + "," + b + ")"; }
+function drawJar(i){
+  const p = pos[i]; if (!p) return; const lift = i === sel ? -14 : 0, sh = shake[i] || 0, x = p.x + Math.sin(sh * 40) * sh * 8, y = p.y + lift;
+  // glass body
+  ctx.save(); ctx.translate(x, y);
+  rr(0, 0, JW, JH, JW * .32); ctx.fillStyle = doneJars.has(i) ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.08)"; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = i === sel ? "rgba(255,240,180,.95)" : "rgba(230,250,255,.55)"; ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.18)"; rr(JW * .1, JH * .08, JW * .1, JH * .7, JW * .05); ctx.fill();
+  // rim
+  ctx.fillStyle = "rgba(230,250,255,.35)"; rr(-3, -5, JW + 6, 8, 4); ctx.fill();
+  ctx.restore();
+  // pieces (ones still flying in are hidden until they land)
+  const j = jars[i];
+  for (let s = 0; s < j.length; s++) { if (anims.some(a => a.j === i && a.toSlot === s)) continue;
+    const [px, py] = slotXY(i, s), top = i === sel && s >= j.length - topRun(j); piece(j[s], px + Math.sin(sh * 40) * sh * 8, py - (top ? 8 : 0), top); }
+  if (doneJars.has(i)) { // cork
+    ctx.fillStyle = "#B98557"; rr(x + JW * .18, y - 16, JW * .64, 15, 5); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(x + JW * .24, y - 13, JW * .5, 3); }
+}
+const SAND = [];
+function render(dt){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const sh = SHORES[shoreOf(mode === "campaign" ? levelNo : 1)];
+  const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, sh.sky[0]); g.addColorStop(1, sh.sky[1]); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  // light caustics
+  ctx.globalAlpha = .07; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  for (let k = 0; k < 9; k++) { ctx.beginPath(); for (let x = -20; x <= VW + 20; x += 20) ctx.lineTo(x, VH * (k / 9) + Math.sin(x * .02 + time * .8 + k) * 10); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = sh.sand; ctx.beginPath(); ctx.moveTo(0, VH); for (let x = 0; x <= VW; x += 30) ctx.lineTo(x, VH - 54 - Math.sin(x * .01) * 10); ctx.lineTo(VW, VH); ctx.fill();
+  if (!jars.length) return;
+  for (let i = 0; i < jars.length; i++) drawJar(i);
+  // pieces in the air, arcing from one jar to the other
+  for (let k = anims.length - 1; k >= 0; k--) { const a = anims[k]; a.t += dt; if (a.t < 0) { const [x, y] = slotXY(a.i, a.fromSlot); piece(a.c, x, y - 8, true); continue; }
+    const u = clamp(a.t / a.dur, 0, 1), e = u * u * (3 - 2 * u), [x0, y0] = slotXY(a.i, a.fromSlot), [x1, y1] = slotXY(a.j, a.toSlot), top = Math.min(pos[a.i].y, pos[a.j].y) - PH * 1.4;
+    const x = lerp(x0, x1, e), y = (1 - e) * (1 - e) * y0 + 2 * (1 - e) * e * top + e * e * y1; piece(a.c, x, y, true);
+    if (u >= 1) anims.splice(k, 1); }
+  for (let k = fx.length - 1; k >= 0; k--) { const p = fx[k]; p.t += dt; if (p.t > p.life) { fx.splice(k, 1); continue; } p.vy += (p.g || 300) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.sq) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.t * 9); ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); } }
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < shake.length; i++) if (shake[i]) shake[i] = Math.max(0, shake[i] - dt * 2.5);
+}
+function wiggle(i){ shake[i] = .35; }
+function sparkle(i){ const p = pos[i]; if (!p) return; for (let k = 0; k < 26; k++) { const a = Math.random() * 6.28, s = 60 + Math.random() * 160; fx.push({ x: p.x + JW / 2, y: p.y + JH * .3, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, t: 0, life: .6 + Math.random() * .4, c: k % 3 ? "#FFF6C2" : COLORS[jars[i][0]].c, r: 1.5 + Math.random() * 2.5, g: 200 }); } }
+function confetti(){ fx.push({ x: VW / 2 + (Math.random() - .5) * 60, y: VH * .35, vx: (Math.random() - .5) * 700, vy: -300 - Math.random() * 500, t: 0, life: 1.6 + Math.random(), c: COLORS[Math.floor(Math.random() * 9)].c, r: 3 + Math.random() * 3, sq: true, g: 700 }); }
+
+/* ---------------- HUD and menus ---------------- */
+function hud(){
+  $("moves").textContent = moves; $("par").textContent = "par " + (puzzle ? puzzle.par : "–");
+  $("undoN").textContent = undos; $("undoBtn").disabled = undos <= 0; $("jarN").textContent = extraJar; $("jarBtn").disabled = extraJar <= 0;
+  if (duel()) { const p = players[turnP]; $("lvKick").textContent = mode === "bot" ? "YOU VS " + rival.name.toUpperCase() : "DUEL"; $("lv").textContent = p.bot ? p.name : p.name === "You" ? "Your turn" : p.name; $("lvKick").style.color = p.color; return; }
+  $("lvKick").style.color = "";
+  if (mode === "daily") { $("lvKick").textContent = "SAME FOR EVERYONE"; $("lv").textContent = "Daily #" + dayNo(); }
+  else { $("lvKick").textContent = SHORES[shoreOf(levelNo)].name.toUpperCase(); $("lv").textContent = "Level " + levelNo; }
+}
+function show(id){ for (const s of ["menu", "win", "turnCard"]) $(s).hidden = s !== id; }
+function popup(text, kick){ const p = $("pop"); p.innerHTML = (kick ? "<small>" + kick + "</small>" : "") + text; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show"); }
+let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+function refreshMenu(){
+  buildRivals();
+  const cur = shoreOf(save.level), tot = starTotal();
+  $("shores").innerHTML = SHORES.map((s, i) => '<div class="sh' + (i < cur ? " done" : i === cur ? " on" : "") + '"><i>' + (i <= cur ? s.icon : "🔒") + "</i>" + s.name.split(" ")[0] + "</div>").join("");
+  $("shoreTxt").textContent = save.level > SHORES.length * PER_SHORE ? "ALL SHORES · LEVEL " + save.level : SHORES[cur].name.toUpperCase() + " · " + ((save.level - 1) % PER_SHORE) + "/" + PER_SHORE;
+  $("starTot").textContent = tot;
+  $("bar").style.width = clamp(((save.level - 1) - cur * PER_SHORE) / PER_SHORE * 100, 0, 100) + "%";
+  $("playLbl").textContent = save.level > 1 ? "Play level " + save.level : "Play"; $("playSub").textContent = colorsFor(save.level) + " colours · " + SHORES[cur].name;
+  const dn = dayNo(), played = save.daily.day === dn;
+  $("dailyName").textContent = "Daily puzzle #" + dn;
+  $("dailySub").textContent = played ? "Today: " + save.daily.best + " moves " + "★".repeat(save.daily.stars) + (save.streak.n > 1 && save.streak.last === dn ? " · " + save.streak.n + "-day streak" : "") : "Same jars for everyone today";
+}
+function toMenu(){ if (state === "play") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; $("tools").hidden = true; $("turn").hidden = true; botQueue = null; refreshMenu(); demo(); show("menu"); }
+function demo(){ levelNo = save.level; mode = "campaign"; const p = makePuzzle(5, 2, 99); jars = p.jars; puzzle = p; doneJars = new Set(); sel = -1; anims = []; layout(); }
+async function share(){
+  let text;
+  if (duel()) text = "Sea Glass Sort duel: " + $("winBig").textContent + " " + players.map(p => p.moves).join(" – ") + " moves 🫙";
+  else { const st = starsFor(moves, puzzle.par, usedJar); text = (mode === "daily" ? "Sea Glass Sort Daily #" + dayNo() : "Sea Glass Sort level " + levelNo) + " " + "⭐".repeat(st) + "☆".repeat(3 - st) + "\n" + moves + " moves (par " + puzzle.par + ")" + (mode === "daily" && save.streak.n > 1 ? " · 🔥" + save.streak.n : ""); }
+  text += "\n" + SHARE_URL; SDK.event("share", { mode });
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Copied. Paste it to a friend"); } catch (e) { toast(text); }
+}
+function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
+function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
+
+/* ---------------- input ---------------- */
+function jarAt(x, y){ for (let i = 0; i < pos.length; i++) { const p = pos[i]; if (x >= p.x - 8 && x <= p.x + JW + 8 && y >= p.y - 30 && y <= p.y + JH + 14) return i; } return -1; }
+cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play") return; const i = jarAt(e.clientX, e.clientY); if (i >= 0) tapJar(i); else sel = -1; });
+addEventListener("keydown", e => {
+  Sound.init(); if (state !== "play") return;
+  const k = "123456789".indexOf(e.key); if (k >= 0 && k < jars.length) tapJar(k); else if (e.key === "0" && jars.length >= 10) tapJar(9);
+  if (e.code === "KeyZ" || e.code === "Backspace") undo();
+  if (e.code === "KeyR") restart();
+  if (e.code === "KeyM") toggleSound();
+  if (e.code === "Escape") toMenu();
+});
+const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
+tap("playBtn", () => startLevel("campaign")); tap("dailyBtn", () => startLevel("daily")); tap("duoBtn", () => startDuel("duo")); onRival(r => startDuel("bot", r));
+tap("undoBtn", undo); tap("restartBtn", restart); tap("jarBtn", addJar); tap("menuTop", toMenu); tap("soundBtn", toggleSound);
+tap("nextBtn", () => duel() ? startDuel(mode, rival) : startLevel("campaign")); tap("replayBtn", () => mode === "daily" ? startLevel("daily") : startLevel("campaign", levelNo)); tap("shareBtn", share); tap("winMenu", toMenu);
+tap("tcBtn", beginTurn);
+addEventListener("resize", layout);
+
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now; time += dt;
+  if (state === "play" && botQueue && !anims.length) { botT -= dt; if (botT <= 0) { if (botQueue.length) { const [i, j] = botQueue.shift(); sel = i; setTimeout(() => { sel = -1; tryPour(i, j); }, 140); botT = .42; } else botQueue = null; } }
+  render(dt); requestAnimationFrame(frame);
+}
+layout(); soundIcon(); toMenu();
+requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+if (/[?&]debug=1/.test(location.search)) window.__sg = { get state(){ return state; }, get jars(){ return jars; }, get puzzle(){ return puzzle; }, get moves(){ return moves; }, get players(){ return players; }, get turnP(){ return turnP; }, startLevel, startDuel, beginTurn, RIVALS, tryPour, solve, setLevel(n){ save.level = n; store(); } };
+})();
+</script>
+</body>
+</html>
