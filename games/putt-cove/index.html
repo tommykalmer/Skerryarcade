@@ -728,7 +728,7 @@ function* planPutt(field, x, y, t0, rv){
 function botTick(dt){
   if (!bot) { if (!sim.field) sim.field = buildField(sim.hole); bot = { fireAt: time + 2, plan: null }; bot.gen = planPutt(sim.field, ball.x, ball.y, bot.fireAt, rival); }
   if (!bot.plan) {
-    const until = performance.now() + 9;
+    const until = performance.now() + 13;
     while (performance.now() < until) { const r = bot.gen.next(); if (r.done) { bot.plan = r.value; break; } }
     if (!bot.plan) return;
     bot.plan.from = Math.atan2(COURSE[holeIdx].cup[1] - ball.y, COURSE[holeIdx].cup[0] - ball.x);
