@@ -78,6 +78,19 @@
   .sb em{font:700 .62rem/1 var(--f-display);font-style:normal;color:var(--sun);display:flex;align-items:center;gap:3px}
   .sb em .coin{width:10px;height:10px}
   .sb.own em{color:var(--muted)}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
   .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   @media (max-height:660px){.lead{display:none}.card{gap:9px}.logo{font-size:2.2rem}}
@@ -110,6 +123,11 @@
     </div>
     <button class="btn sun" id="playBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>Play</button>
     <button class="btn daily" id="dailyBtn"><span><b id="dailyName">Daily challenge</b><small id="dailySub">Same blocks for everyone today</small></span></button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, same blocks</button>
+    </div>
     <div class="skins"><p>BALLS</p><div class="sk" id="skins"></div></div>
     <p class="note" id="skinNote">Collect coins in the field to unlock new balls.</p>
   </div>
@@ -215,7 +233,7 @@ function emptyGrid(){ grid = []; for (let r = 0; r <= ROWS; r++) grid.push(new A
 
 /* ---------------- level generation ---------------- */
 function makeRow(lv){
-  const rnd = daily ? rng(dailyNo * 7919 + lv * 104729) : runRnd;
+  const rnd = daily ? rng(dailyNo * 7919 + lv * 104729) : duel() ? rng(duelSeed + lv * 104729) : runRnd;
   const row = new Array(COLS).fill(null), free = [...Array(COLS).keys()];
   const take = () => free.splice(Math.floor(rnd() * free.length), 1)[0];
   // always one extra ball
@@ -231,15 +249,106 @@ function makeRow(lv){
   return row;
 }
 
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(save.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; save.beaten = save.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ save.beaten = save.beaten || {}; const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "pip", name: "Pip", short: "Pip", face: "P", color: "#46E0BE", blurb: "Fires and hopes", pick: 16, noise: 7 },
+  { id: "echo", name: "Echo", short: "Echo", face: "E", color: "#FFA53D", blurb: "Loves a bank shot", pick: 4, noise: 2.4 },
+  { id: "vertex", name: "Vertex", short: "Vertex", face: "V", color: "#FF6B9A", blurb: "Finds every gap", pick: 1, noise: .7 },
+];
+/* ---------------- duels ----------------
+   Both players get exactly the same blocks, row by row. They take turns, each on their own field.
+   If a player's blocks reach the floor, the other finishes the round; whoever is still standing wins. */
+let mode = "solo", rival = RIVALS[0], players = [], turnP = 0, duelSeed = 0, botAim = null;
+const duel = () => mode !== "solo";
+const botTurn = () => state === "play" && duel() && players[turnP] && players[turnP].bot;
+function stash(i){ const p = players[i]; p.grid = grid; p.level = level; p.ballCount = ballCount; p.launchX = launchX; p.broken = brokenRun; }
+function load(i){ const p = players[i]; turnP = i; grid = p.grid; level = p.level; ballCount = p.ballCount; launchX = p.launchX; brokenRun = p.broken;
+  balls = []; particles = []; beams = []; floaters = []; nextX = null; pendingBalls = 0; botAim = null; }
+function duelNext(dead){
+  players[turnP].dead = dead; stash(turnP);
+  if (turnP === 1 && players.some(p => p.dead)) return duelOver();
+  phase = "switch";
+  setTimeout(() => { if (state !== "play") return; load(1 - turnP); phase = "aim"; const p = players[turnP];
+    popup(p.bot ? p.name.toUpperCase() : mode === "bot" ? "YOUR TURN" : p.name.toUpperCase(), p.color); hud();
+    $("hint").textContent = p.bot ? p.name + " is aiming…" : (mode === "bot" ? "Your turn" : p.name) + ": aim and fire"; $("hint").style.opacity = 1; }, 520);
+}
+function duelOver(){
+  state = "over"; phase = "aim"; SDK.gameplayStop(); buzz([30, 60, 30]);
+  const [a, b] = players; let w = null;
+  if (a.dead && !b.dead) w = b; else if (b.dead && !a.dead) w = a; else w = a.broken === b.broken ? null : a.broken > b.broken ? a : b;
+  let unl = "";
+  const big = $("overScore"); big.style.fontSize = "clamp(2rem,10vw,3rem)";
+  if (mode === "bot") { const won = w && !w.bot; big.textContent = !w ? "A draw!" : won ? "You win!" : rival.name + " wins"; if (won) { unl = beatRival(rival); Sound.best(); SDK.happytime(); } else Sound.over(); }
+  else { big.textContent = w ? w.name + " wins!" : "A draw!"; Sound.best(); }
+  big.style.color = w ? w.color : "";
+  $("overKick").textContent = "DUEL · LEVEL " + Math.max(a.level, b.level);
+  const nm = p => p.bot ? p.name : mode === "bot" ? "You" : p.name;
+  $("overSub").textContent = players.map(p => nm(p) + ": " + p.ballCount + " balls, " + p.broken + " blocks" + (p.dead ? " (reached the floor)" : "")).join(" · ") + (unl ? " · " + unl : "");
+  $("contBtn").hidden = true; show("over"); $("tools").hidden = true;
+  SDK.levelEnd(mode, "done", Math.max(a.level, b.level)); SDK.event("duel_end", { mode, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (w && !w.bot ? 1 : 0) : -1 });
+}
+// the computer aims by playing out one ball for every angle on a copy of the field and picking the most damaging line
+function botScore(dir){
+  const hp = grid.map(row => row.map(o => o && o.t === "block" ? o.hp : 0)), ring = grid.map(row => row.map(o => o && o.t === "ball" ? 1 : 0));
+  const b = { x: launchX, y: FLOOR - R, vx: dir.x * SPEED, vy: dir.y * SPEED }; let sc = 0; const h = .0045;
+  for (let t = 0; t < 7; t += h) {
+    b.x += b.vx * h; b.y += b.vy * h;
+    if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); } if (b.x > COLS - R) { b.x = COLS - R; b.vx = -Math.abs(b.vx); } if (b.y < R) { b.y = R; b.vy = Math.abs(b.vy); }
+    const c0 = Math.floor(b.x), r0 = Math.floor(b.y);
+    for (let r = r0 - 1; r <= r0 + 1; r++) for (let c = c0 - 1; c <= c0 + 1; c++) {
+      if (r < 0 || r > ROWS || c < 0 || c >= COLS) continue;
+      if (ring[r][c] && Math.hypot(b.x - c - .5, b.y - r - .5) < .32) { ring[r][c] = 0; sc += 4; }
+      if (!hp[r][c]) continue;
+      const px = clamp(b.x, c + GAP, c + 1 - GAP), py = clamp(b.y, r + GAP, r + 1 - GAP), dx = b.x - px, dy = b.y - py, d = Math.hypot(dx, dy);
+      if (d >= R || d < 1e-6) continue;
+      const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny; b.x += nx * (R - d); b.y += ny * (R - d);
+      if (vn < 0) { b.vx -= 2 * vn * nx; b.vy -= 2 * vn * ny; hp[r][c]--; sc += 1 + r * .3; if (!hp[r][c]) sc += 3 + r * .6; }
+    }
+    if (b.y >= FLOOR - R && b.vy > 0) break;
+  }
+  return sc;
+}
+function botChoose(){
+  const c = [];
+  for (let deg = 9; deg <= 171; deg += 1.5) { const a = -deg * Math.PI / 180; c.push({ deg, s: botScore({ x: Math.cos(a), y: Math.sin(a) }) }); }
+  c.sort((p, q) => q.s - p.s);
+  const pick = c[Math.floor(Math.random() * Math.min(rival.pick, c.length))], deg = clamp(pick.deg + gauss() * rival.noise, 8.5, 171.5), a = -deg * Math.PI / 180;
+  return { x: Math.cos(a), y: Math.sin(a) };
+}
+function botTick(dt){
+  if (!botAim) { const to = botChoose(); botAim = { to, from: Math.atan2(-1, 0), t: -.35 }; }
+  botAim.t += dt;
+  const k = clamp(botAim.t / .8, 0, 1), e = k * k * (3 - 2 * k), a = lerp(botAim.from, Math.atan2(botAim.to.y, botAim.to.x), e);
+  aimDir = botAim.t > 0 ? { x: Math.cos(a), y: Math.sin(a) } : null;
+  if (botAim.t > 1.05) { aimDir = botAim.to; botAim = null; fire(); aimDir = null; ff = 2; }
+}
+
 /* ---------------- run flow ---------------- */
-function startRun(isDaily){
-  daily = !!isDaily; dailyNo = dayNo(); runRnd = Math.random;
+function startRun(isDaily, m, r){
+  mode = m || "solo"; if (r) rival = r; daily = !!isDaily && mode === "solo"; dailyNo = dayNo(); runRnd = Math.random; duelSeed = (Math.random() * 1e9) | 0; botAim = null; turnP = 0;
+  $("overScore").style.fontSize = ""; $("overScore").style.color = "";
   emptyGrid(); balls = []; particles = []; beams = []; floaters = [];
   level = 1; ballCount = 1; pendingBalls = 0; launchX = COLS / 2; continued = 0; ff = 1; brokenRun = 0; coinsRun = 0; paidLv = 0; startedBest = save.best;
   grid[0] = makeRow(1); shiftRows(true);
+  players = mode === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }] : mode === "bot" ? [{ name: "You", color: "#FFD23F" }, { name: rival.name, color: rival.color, bot: true }] : [];
+  if (duel()) { stash(0); players[1].grid = JSON.parse(JSON.stringify(grid)); players[1].level = 1; players[1].ballCount = 1; players[1].launchX = launchX; players[1].broken = 0; players.forEach(p => p.dead = false); }
   phase = "aim"; state = "play"; show(null); $("hud").hidden = false; $("tools").hidden = true;
-  $("hint").hidden = false; $("hint").style.opacity = save.tut ? 0 : 1;
-  hud(); SDK.gameplayStart(); SDK.event("round_start", { daily });
+  $("hint").hidden = false; $("hint").style.opacity = save.tut && !duel() ? 0 : 1;
+  $("hint").textContent = duel() ? (mode === "bot" ? "You first" : "Player 1 first") + ": same blocks for both. Last one standing wins" : "Aim at a spot, or pull back below the ball. Let go to fire";
+  hud(); SDK.gameplayStart(); SDK.event("round_start", { daily, mode, rival: mode === "bot" ? rival.id : "" });
 }
 // move every row down one; spawn the next row on top
 function shiftRows(initial){
@@ -268,10 +377,11 @@ function endTurn(){
   level++;
   const dead = shiftRows(false);
   Sound.turn();
-  if (level > save.best && startedBest > 0 && level === startedBest + 1) { popup("NEW BEST!", "#FFD23F"); Sound.best(); SDK.happytime(); }
+  if (duel()) {}
+  else if (level > save.best && startedBest > 0 && level === startedBest + 1) { popup("NEW BEST!", "#FFD23F"); Sound.best(); SDK.happytime(); }
   else if (level % 25 === 0) popup("LEVEL " + level, "#7CF5D6");
   hud();
-  setTimeout(() => { if (state !== "play") return; if (dead) gameOver(); else phase = "aim"; }, 260);
+  setTimeout(() => { if (state !== "play") return; if (duel()) return duelNext(dead); if (dead) gameOver(); else phase = "aim"; }, 260);
 }
 function gameOver(){
   state = "over"; phase = "aim"; SDK.gameplayStop(); Sound.over(); buzz([30, 60, 30]);
@@ -287,6 +397,7 @@ function gameOver(){
 }
 const contCost = () => continued === 0 ? 30 : 75;
 function finishStats(){
+  if (duel()) return;
   // a coin for every four levels reached (paid once per level, even after a continue)
   const bonus = Math.floor(level / 4) - Math.floor(paidLv / 4); if (bonus > 0) { save.coins += bonus; coinsRun += bonus; } paidLv = Math.max(paidLv, level);
   save.games++;
@@ -370,6 +481,7 @@ function update(dt){
   for (let i = beams.length - 1; i >= 0; i--) { beams[i].t += dt; if (beams[i].t > .3) beams.splice(i, 1); }
   for (let i = floaters.length - 1; i >= 0; i--) { floaters[i].t += dt; if (floaters[i].t > .8) floaters.splice(i, 1); }
   if (state !== "play") return;
+  if (phase === "aim" && botTurn()) botTick(dt);
   if (phase === "fly") {
     const sdt = dt * ff; turnT += dt;
     if (turnT > 7 && $("recallBtn").hidden) $("recallBtn").hidden = false;
@@ -455,7 +567,7 @@ function render(){
   ctx.translate(sx, sy);
   // field
   const FW = COLS * CS, FH = FLOOR * CS;
-  rrect(OX - 6, OY - 6, FW + 12, FH + 12, 16); ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fill(); ctx.strokeStyle = "rgba(170,190,255,.14)"; ctx.lineWidth = 1.5; ctx.stroke();
+  rrect(OX - 6, OY - 6, FW + 12, FH + 12, 16); ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fill(); ctx.strokeStyle = duel() && players[turnP] ? players[turnP].color + "AA" : "rgba(170,190,255,.14)"; ctx.lineWidth = duel() ? 2.5 : 1.5; ctx.stroke();
   ctx.fillStyle = "rgba(170,190,255,.05)";
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { ctx.beginPath(); ctx.arc(OX + (c + .5) * CS, OY + (r + .5) * CS, 1.6, 0, 7); ctx.fill(); }
   // danger zone: the last row lights up when a block sits in it
@@ -534,14 +646,16 @@ function render(){
 
 /* ---------------- HUD and screens ---------------- */
 function hud(){
-  $("lvl").textContent = level; $("lvlKick").textContent = daily ? "DAILY #" + dailyNo : "LEVEL";
-  $("lvlSub").textContent = daily ? "Today's best " + (save.daily.day === dailyNo ? save.daily.best : "–") : "Best " + Math.max(save.best, level);
+  $("lvl").textContent = level; $("lvlKick").textContent = daily ? "DAILY #" + dailyNo : duel() ? (players[turnP].bot ? players[turnP].name : mode === "bot" ? "YOU" : players[turnP].name).toUpperCase() + " · LEVEL" : "LEVEL";
+  $("lvlKick").style.color = duel() ? players[turnP].color : "";
+  if (duel()) { const o = players[1 - turnP]; $("lvlSub").textContent = (o.bot ? o.name : mode === "bot" ? "You" : o.name) + ": " + (o.ballCount || 1) + " balls" + (o.dead ? " · out" : ""); }
+  else $("lvlSub").textContent = daily ? "Today's best " + (save.daily.day === dailyNo ? save.daily.best : "–") : "Best " + Math.max(save.best, level);
   $("coins").textContent = save.coins;
 }
 function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
 function popup(text, col){ const p = $("pop"); p.textContent = text; p.style.color = col || "#fff"; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show"); }
 let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2400); }
-function refreshMenu(){
+function refreshMenu(){ buildRivals();
   $("sBest").textContent = save.best; $("sBroken").textContent = save.broken >= 10000 ? Math.round(save.broken / 1000) + "k" : save.broken; $("sCoins").textContent = save.coins;
   const n = dayNo(), played = save.daily.day === n;
   $("dailyName").textContent = "Daily challenge #" + n;
@@ -567,9 +681,12 @@ function demo(){ // a calm field behind the menu
   emptyGrid(); level = 6; balls = []; const rnd = rng(7);
   for (let r = 0; r < 5; r++) for (let c = 0; c < COLS; c++) if (rnd() < .5) { const hp = 1 + Math.floor(rnd() * 9); grid[r][c] = { t: "block", hp, max: hp, flash: 0 }; } else if (rnd() < .15) grid[r][c] = { t: "ball" };
 }
-function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); aiming = false; aimDir = null; show("pause"); }
+function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); aiming = false; if (!botTurn()) aimDir = null; show("pause"); }
 function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
 async function share(){
+  if (duel()) { const t = "Bounce Breaker duel: " + $("overScore").textContent + " " + players.map(p => p.broken).join(" – ") + " blocks 🔷\n" + SHARE_URL;
+    try { if (navigator.share) { await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(t); toast("Copied. Paste it to a friend"); } catch (e) { toast(t); } return; }
   const text = "Bounce Breaker " + (daily ? "Daily #" + dailyNo + ": " : "") + "I reached level " + level + " with " + ballCount + " balls 🔷 Beat it?\n" + SHARE_URL;
   SDK.event("share", { level, daily });
   try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
@@ -579,12 +696,12 @@ function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 
 function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
 
 /* ---------------- input ---------------- */
-cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play" || phase !== "aim") return; aiming = true; aimDir = aimFrom(e.clientX, e.clientY); try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
-cv.addEventListener("pointermove", e => { if (state !== "play" || phase !== "aim") return;
+cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play" || phase !== "aim" || botTurn()) return; aiming = true; aimDir = aimFrom(e.clientX, e.clientY); try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+cv.addEventListener("pointermove", e => { if (state !== "play" || phase !== "aim" || botTurn()) return;
   if (aiming) aimDir = aimFrom(e.clientX, e.clientY);
   else if (e.pointerType === "mouse") aimDir = aimFrom(e.clientX, e.clientY);    // desktop: the guide follows the mouse
 });
-cv.addEventListener("pointerup", e => { if (!aiming) { if (e.pointerType === "mouse" && phase === "aim" && state === "play") { aimDir = aimFrom(e.clientX, e.clientY); if (aimDir) fire(); } return; }
+cv.addEventListener("pointerup", e => { if (botTurn()) { aiming = false; return; } if (!aiming) { if (e.pointerType === "mouse" && phase === "aim" && state === "play") { aimDir = aimFrom(e.clientX, e.clientY); if (aimDir) fire(); } return; }
   aiming = false; if (aimDir) fire(); aimDir = null; });
 cv.addEventListener("pointercancel", () => { aiming = false; aimDir = null; });
 cv.addEventListener("pointerleave", e => { if (e.pointerType === "mouse" && !aiming) aimDir = null; });
@@ -593,15 +710,15 @@ addEventListener("keydown", e => {
   Sound.init();
   if (e.code === "KeyP" || e.code === "Escape") { state === "play" ? pause() : state === "pause" && resume(); }
   if (e.code === "KeyM") toggleSound();
-  if (state !== "play") return;
+  if (state !== "play" || botTurn()) return;
   if (phase === "aim" && (e.code === "ArrowLeft" || e.code === "ArrowRight")) { e.preventDefault(); keyAng = clamp(keyAng + (e.code === "ArrowLeft" ? -.035 : .035) * (e.shiftKey ? 3 : 1), -Math.PI + .14, -.14); aimDir = { x: Math.cos(keyAng), y: Math.sin(keyAng) }; }
   if (e.code === "Space") { e.preventDefault(); if (phase === "aim") { if (!aimDir) aimDir = { x: Math.cos(keyAng), y: Math.sin(keyAng) }; fire(); aimDir = null; } else if (phase === "fly") toggleFF(); }
   if (e.code === "KeyR" && phase === "fly") recall();
 });
 function toggleFF(){ ff = ff === 1 ? 2.5 : 1; $("ffBtn").classList.toggle("on", ff > 1); }
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
-tap("playBtn", () => startRun(false)); tap("dailyBtn", () => startRun(true)); tap("againBtn", () => startRun(daily)); tap("menuBtn", toMenu); tap("shareBtn", share);
-tap("contBtn", cont); tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => { finishStats(); startRun(daily); }); tap("quitBtn", () => { finishStats(); toMenu(); });
+tap("playBtn", () => startRun(false)); tap("dailyBtn", () => startRun(true)); tap("againBtn", () => startRun(daily, mode, rival)); tap("duoBtn", () => startRun(false, "duo")); onRival(r => startRun(false, "bot", r)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("contBtn", cont); tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => { finishStats(); startRun(daily, mode, rival); }); tap("quitBtn", () => { finishStats(); toMenu(); });
 tap("soundBtn", toggleSound); tap("ffBtn", toggleFF); tap("recallBtn", recall);
 addEventListener("blur", pause);
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
@@ -613,7 +730,7 @@ function frame(now){ const dt = Math.min(.033, (now - last) / 1000); last = now;
 layout(); soundIcon(); toMenu();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
-if (/[?&]debug=1/.test(location.search)) window.__bb = { get state(){ return state; }, get phase(){ return phase; }, get level(){ return level; }, get balls(){ return ballCount; },
+if (/[?&]debug=1/.test(location.search)) window.__bb = { RIVALS, get turnP(){ return turnP; }, get players(){ return players; }, get state(){ return state; }, get phase(){ return phase; }, get level(){ return level; }, get balls(){ return ballCount; },
   aim(deg){ const a = -deg * Math.PI / 180; aimDir = { x: Math.cos(a), y: Math.sin(a) }; }, fire, recall, setFF(v){ ff = v; }, give(n){ ballCount += n; }, coins(n){ save.coins += n; store(); hud(); }, startRun,
   jump(lv){ level = lv; for (let r = 0; r < 5; r++) grid[r] = makeRow(lv - r); } };
 })();

@@ -68,6 +68,23 @@
   .sw.locked i{filter:grayscale(.85) brightness(.55)}
   .sw svg{position:absolute;inset:0;margin:auto;width:16px;height:16px;color:#fff}
   .unlock{font:700 .85rem/1.3 var(--f-body);color:#fff;background:linear-gradient(90deg,rgba(70,224,190,.25),rgba(255,210,63,.25));border:1px solid var(--line);padding:10px 14px;border-radius:14px;width:100%}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+  .turn{position:fixed;left:50%;top:calc(112px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:800 .82rem/1 var(--f-display);letter-spacing:.04em;padding:8px 14px;border-radius:999px;background:var(--c,#FFD23F);color:#1E1400;pointer-events:none;z-index:2;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.2);transition:background .2s}
+  .turn.pulse{animation:tp .45s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes tp{0%{transform:translateX(-50%) scale(.8)}100%{transform:translateX(-50%) scale(1)}}
+  .who{font:800 clamp(1.9rem,9vw,2.6rem)/1.05 var(--f-display);margin:0}
   .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   @media (max-height:640px){.lead{display:none}.card{gap:10px}.logo{font-size:2.4rem}}
@@ -78,6 +95,7 @@
 <canvas id="game" aria-label="Stack Tower"></canvas>
 <div class="score" id="scoreBox" hidden><b id="score">0</b><span id="scoreSub">BEST 0</span></div>
 <div class="combo" id="combo"></div>
+<div class="turn" id="turn" hidden></div>
 <div class="ibtns" id="ibtns">
   <button class="ibtn" id="soundBtn" aria-label="Sound on or off"></button>
 </div>
@@ -93,6 +111,11 @@
       <div class="stat"><b id="sGames">0</b><small>Towers built</small></div>
     </div>
     <button class="btn sun" id="playBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>Play</button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, one tower</button>
+    </div>
     <div class="themes"><p>TOWER STYLE</p><div class="swatches" id="swatches"></div></div>
     <p class="note" id="themeNote">Tap, click or press Space to drop a block.</p>
   </div>
@@ -102,6 +125,7 @@
   <div class="card">
     <p class="kicker" id="overKick">YOUR TOWER</p>
     <h2 class="big" id="overScore">0</h2>
+    <h2 class="who" id="overWho" hidden></h2>
     <span class="badge" id="overBadge" hidden>NEW BEST!</span>
     <p class="note" id="overSub"></p>
     <div class="unlock" id="overUnlock" hidden></div>
@@ -183,6 +207,47 @@ const Sound = (() => {
 })();
 const buzz = p => { try { if (save.sound && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) {} };
 
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(save.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; save.beaten = save.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ save.beaten = save.beaten || {}; const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "pebble", name: "Pebble", short: "Pebble", face: "P", color: "#46E0BE", blurb: "Taps a bit early", k: 8.5, perf: .1 },
+  { id: "mason", name: "Mason", short: "Mason", face: "M", color: "#FFA53D", blurb: "Steady hands", k: 4.6, perf: .3 },
+  { id: "spire", name: "The Spire", short: "Spire", face: "S", color: "#FF6B9A", blurb: "Lives for perfects", k: 2.6, perf: .55 },
+];
+let mode = "solo", rival = RIVALS[0], players = [], turn = 0, botAim = null;
+const duel = () => mode !== "solo";
+// the computer picks where it will let go as each block appears; faster blocks make its timing worse
+function botPlanDrop(){
+  if (!cur) return; const top = stack[stack.length - 1], sp = cur.speed / 150;
+  const err = Math.random() < rival.perf / Math.max(1, sp) ? (Math.random() - .5) * perfectTol(score) * 1.2 : gauss() * rival.k * sp;
+  botAim = { at: top[axis] + err, wait: .35 + Math.random() * .5, last: cur[axis] };
+}
+function botTick(dt){
+  if (!cur || !botAim) return;
+  botAim.wait -= dt; const now = cur[axis], prev = botAim.last; botAim.last = now;
+  if (botAim.wait > 0) return;
+  if ((prev - botAim.at) * (now - botAim.at) <= 0) { cur[axis] = botAim.at; inputLock = 0; botAim = null; drop(true); }
+}
+function setTurn(){
+  const t = $("turn"); if (!duel() || state !== "play") { t.hidden = true; return; }
+  const p = players[turn]; t.hidden = false; t.style.setProperty("--c", p.color);
+  t.textContent = p.bot ? p.name + " drops…" : mode === "bot" ? "Your drop" : p.name + "'s drop";
+  t.classList.remove("pulse"); void t.offsetWidth; t.classList.add("pulse");
+  if (players[turn].bot) botPlanDrop(); else botAim = null;
+}
+
 /* ---------------- state ---------------- */
 let state = "menu";           // menu | play | falling | over
 let stack = [], cur = null, debris = [], rings = [], sparks = [];
@@ -196,15 +261,22 @@ function spawn(){
   const from = (n * 7919) % 3 === 0 ? 1 : -1;      // mostly from the left, sometimes the right, so it doesn't feel scripted
   cur = { x: top.x, z: top.z, w: top.w, d: top.d, y: n * SLAB, i: n, flash: 0, dir: -from, t: 0 };
   cur[axis] = top[axis] + from * RANGE;
-  cur.speed = speedAt(score) * (score > 35 ? .9 + ((n * 37) % 23) / 100 : 1);
+  cur.speed = speedAt(duel() ? score * 1.5 + 6 : score) * (score > 35 ? .9 + ((n * 37) % 23) / 100 : 1);
 }
-function startGame(){
+function startGame(m, r){
+  mode = m || "solo"; if (r) rival = r; turn = 0; botAim = null;
+  players = mode === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }] : mode === "bot" ? [{ name: "You", color: "#FFD23F" }, { name: rival.name, color: rival.color, bot: true }] : [];
+  players.forEach(p => { p.perf = 0; p.drops = 0; });
   resetTower(); spawn(); state = "play"; newBest = false; inputLock = .18;
   show(null); $("scoreBox").hidden = false; $("hint").hidden = false; $("hint").style.opacity = 1; updateScore();
-  SDK.gameplayStart(); SDK.event("round_start", { theme: theme.id });
+  if (duel()) $("hint").innerHTML = "<b>Take turns. Miss the tower and you lose</b>";
+  else $("hint").innerHTML = "<b>Tap to drop</b>";
+  setTurn();
+  SDK.gameplayStart(); SDK.event("round_start", { theme: theme.id, mode, rival: mode === "bot" ? rival.id : "" });
 }
-function drop(){
+function drop(byBot){
   if (state !== "play" || !cur || inputLock > 0) return;
+  if (duel() && players[turn].bot && !byBot) return;
   const top = stack[stack.length - 1], size = axis === "x" ? "w" : "d";
   const delta = cur[axis] - top[axis], ad = Math.abs(delta);
   $("hint").style.opacity = 0;
@@ -217,6 +289,7 @@ function drop(){
       if (cur[size] < BASE) { cur[size] = Math.min(BASE, cur[size] + GROW_BY); grew = true; }
       else if (cur[other] < BASE) { cur[other] = Math.min(BASE, cur[other] + GROW_BY); grew = true; }
     }
+    if (duel()) players[turn].perf++;
     place(true); Sound.perfect(combo - 1); if (grew) setTimeout(Sound.grow, 90); buzz(combo > 4 ? [8, 20, 8] : 10);
     rings.push({ b: Object.assign({}, cur), t: 0 });
     if (combo >= 2) showCombo(combo >= 5 ? "PERFECT ×" + combo + "!" : "PERFECT ×" + combo + (grew ? " +GROW" : ""));
@@ -238,15 +311,19 @@ function drop(){
   }
 }
 function place(perfect){
-  cur.flash = 1; stack.push(cur); score++; save.blocks++;
+  cur.flash = 1; cur.owner = duel() ? turn : -1; stack.push(cur); score++; save.blocks++;
+  if (duel()) players[turn].drops++;
   updateScore(); cur = null;
-  if (score > save.best && save.best > 0 && !newBest) { newBest = true; showCombo("NEW BEST!"); Sound.best(); SDK.happytime(); }
+  if (!duel() && score > save.best && save.best > 0 && !newBest) { newBest = true; showCombo("NEW BEST!"); Sound.best(); SDK.happytime(); }
   spawn();
+  if (duel()) { turn = 1 - turn; inputLock = .12; setTurn(); }
 }
 function sparkAt(b){ const a = Math.random() * Math.PI * 2, side = Math.random() < .5; const x = b.x + (side ? (Math.random() - .5) * b.w : Math.cos(a) * b.w / 2), z = b.z + (side ? Math.sin(a) * b.d / 2 : (Math.random() - .5) * b.d);
   return { x, y: b.y + SLAB, z, vx: (x - b.x) * 1.4, vy: 60 + Math.random() * 80, vz: (z - b.z) * 1.4, t: 0, life: .6 + Math.random() * .4 }; }
 function gameOver(){
+  if (duel()) return duelOver();
   state = "falling"; overT = 0; Sound.fall(); buzz([30, 50, 30]); $("hint").hidden = true;
+  $("overWho").hidden = true; $("overScore").hidden = false;
   save.games++; const prevBest = save.best;
   if (score > save.best) save.best = score;
   if (bestCombo > save.perf) save.perf = bestCombo;
@@ -261,13 +338,27 @@ function gameOver(){
   const nxt = THEMES.find(t => !isUnlocked(t));
   if (!fresh.length && nxt) { u.hidden = false; u.textContent = "Next style: " + nxt.name + ". " + nxt.text + "."; }
 }
+function duelOver(){
+  state = "falling"; overT = 0; Sound.fall(); buzz([30, 50, 30]); $("hint").hidden = true; $("turn").hidden = true;
+  const loser = players[turn], winner = players[1 - turn];
+  save.games++; store();
+  SDK.gameplayStop(); SDK.levelEnd(mode, "done", score); SDK.event("duel_end", { mode, height: score, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (winner.bot ? 0 : 1) : -1 });
+  $("overBadge").hidden = true; $("overScore").hidden = true; const w = $("overWho"); w.hidden = false; w.style.color = winner.color;
+  let unl = "";
+  if (mode === "bot") { const won = !winner.bot; w.textContent = won ? "You win!" : rival.name + " wins"; if (won) { unl = beatRival(rival); Sound.best(); SDK.happytime(); } }
+  else w.textContent = winner.name + " wins!";
+  $("overKick").textContent = (loser.bot ? rival.name + " missed" : mode === "bot" ? "You missed" : loser.name + " missed") + " at " + (score + 1);
+  $("overSub").textContent = players.map(p => (p.bot ? p.name : mode === "bot" ? "You" : p.name) + ": " + p.perf + " perfect").join(" · ");
+  const u = $("overUnlock"); u.hidden = !unl; u.textContent = unl;
+}
 function updateScore(){ const s = $("score"); s.textContent = score; s.classList.remove("bump"); void s.offsetWidth; s.classList.add("bump"); setTimeout(() => s.classList.remove("bump"), 120);
-  $("scoreSub").textContent = newBest ? "NEW BEST" : save.best ? "BEST " + save.best : "FIRST TOWER"; }
+  $("scoreSub").textContent = duel() ? "TOWER HEIGHT" : newBest ? "NEW BEST" : save.best ? "BEST " + save.best : "FIRST TOWER"; }
 function showCombo(t){ const c = $("combo"); c.textContent = t; c.classList.remove("show"); void c.offsetWidth; c.classList.add("show"); }
 
 /* ---------------- update ---------------- */
 function update(dt){
   time += dt; inputLock -= dt;
+  if (state === "play" && duel() && players[turn].bot) botTick(dt);
   if (state === "play" && cur) {
     const top = stack[stack.length - 1];
     cur[axis] += cur.dir * cur.speed * dt;
@@ -377,6 +468,8 @@ function render(){
   if (cur) {
     // landing guide: a faint outline of where the block would land
     drawBlock(cur, 1, false);
+    if (duel()) { const b = cur, x0 = b.x - b.w / 2, x1 = b.x + b.w / 2, z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y = b.y + SLAB;
+      poly([P(x0, y, z0), P(x1, y, z0), P(x1, y, z1), P(x0, y, z1)]); ctx.strokeStyle = players[turn].color; ctx.lineWidth = 3; ctx.stroke(); }
   }
   for (const p of sparks) { const [sx, sy] = P(p.x, p.y, p.z); ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(sx, sy, 2.4, 0, 7); ctx.fill(); }
   ctx.globalAlpha = 1;
@@ -390,7 +483,7 @@ function frame(now){ const dt = Math.min(.04, (now - last) / 1000); last = now; 
 function show(id){ for (const s of ["menu", "over"]) $(s).hidden = s !== id; }
 const LOCK = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V8a5 5 0 0 1 10 0v2h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V8a3 3 0 0 0-6 0z"/></svg>';
 function swatchBg(t){ const c = [0, 3, 6, 9].map(i => { const [h, s, l] = t.block(i); return hsl(h, s, l); }); return "linear-gradient(135deg," + c[0] + " 0 25%," + c[1] + " 25% 50%," + c[2] + " 50% 75%," + c[3] + " 75%)"; }
-function refreshMenu(){
+function refreshMenu(){ buildRivals();
   $("sBest").textContent = save.best; $("sPerf").textContent = save.perf; $("sGames").textContent = save.games;
   const box = $("swatches"); box.innerHTML = "";
   for (const t of THEMES) {
@@ -403,13 +496,18 @@ function refreshMenu(){
     box.appendChild(b);
   }
 }
-function toMenu(){ state = "menu"; SDK.gameplayStop(); $("scoreBox").hidden = true; $("hint").hidden = true; refreshMenu(); show("menu"); demoTower(); }
+function toMenu(){ state = "menu"; SDK.gameplayStop(); $("turn").hidden = true; $("scoreBox").hidden = true; $("hint").hidden = true; refreshMenu(); show("menu"); demoTower(); }
 function demoTower(){
   // a decorative tower behind the menu
   resetTower(); for (let i = 1; i <= 9; i++) { const sh = i < 5 ? 0 : (i - 4) * 3; stack.push({ x: (i % 2 ? -1 : 1) * sh * .4, z: (i % 3 ? 1 : -1) * sh * .3, w: BASE - sh, d: BASE - sh * .6, y: i * SLAB, i, flash: 0 }); }
   zoomOut = 1; camK = 1; camY = 0;
 }
 async function share(){
+  if (duel()) { const winner = players[1 - turn];
+    const t = mode === "bot" ? (winner.bot ? rival.name + " beat me" : "I beat " + rival.name) + " in a Stack Tower duel at " + score + " blocks 🧱\n" + SHARE_URL : winner.name + " won our Stack Tower duel at " + score + " blocks 🧱\n" + SHARE_URL;
+    SDK.event("share", { mode, height: score });
+    try { if (navigator.share) { await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(t); toast("Copied. Paste it to a friend"); } catch (e) { toast(t); } return; }
   const text = "I stacked a " + score + "-block tower in Stack Tower 🧱" + (bestCombo > 2 ? " with " + bestCombo + " perfect drops in a row" : "") + ". Can you beat it?\n" + SHARE_URL;
   SDK.event("share", { height: score });
   try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
@@ -421,12 +519,12 @@ function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.soun
 
 /* ---------------- input ---------------- */
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
-tap("playBtn", startGame); tap("againBtn", startGame); tap("menuBtn", toMenu); tap("shareBtn", share); tap("soundBtn", toggleSound);
-cv.addEventListener("pointerdown", e => { e.preventDefault(); Sound.init(); if (state === "play") drop(); else if (state === "over" && overT > 1.6) startGame(); });
+tap("playBtn", () => startGame("solo")); tap("againBtn", () => startGame(mode, rival)); tap("duoBtn", () => startGame("duo")); onRival(r => startGame("bot", r)); tap("menuBtn", toMenu); tap("shareBtn", share); tap("soundBtn", toggleSound);
+cv.addEventListener("pointerdown", e => { e.preventDefault(); Sound.init(); if (state === "play") drop(); else if (state === "over" && overT > 1.6) startGame(mode, rival); });
 addEventListener("keydown", e => {
   if (e.repeat) return;
   if (e.code === "Space" || e.code === "Enter" || e.code === "ArrowDown") { e.preventDefault(); Sound.init();
-    if (state === "play") drop(); else if (state === "menu" || state === "over") startGame(); }
+    if (state === "play") drop(); else if (state === "menu") startGame("solo"); else if (state === "over") startGame(mode, rival); }
   if (e.code === "KeyM") toggleSound();
   if (e.code === "Escape" && state === "over") toMenu();
 });
@@ -437,7 +535,7 @@ addEventListener("resize", layout);
 layout(); soundIcon(); toMenu();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
-if (/[?&]debug=1/.test(location.search)) window.__st = { get state(){ return state; }, get score(){ return score; }, get cur(){ return cur; }, get stack(){ return stack; }, drop, startGame,
+if (/[?&]debug=1/.test(location.search)) window.__st = { get state(){ return state; }, get score(){ return score; }, get cur(){ return cur; }, get stack(){ return stack; }, drop, startGame, RIVALS, get turn(){ return turn; }, get players(){ return players; },
   perfect(){ if (!cur) return; const top = stack[stack.length - 1]; cur[axis] = top[axis] + .5; inputLock = 0; drop(); },
   offset(o){ if (!cur) return; const top = stack[stack.length - 1]; cur[axis] = top[axis] + o; inputLock = 0; drop(); } };
 })();

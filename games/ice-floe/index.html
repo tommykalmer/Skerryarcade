@@ -35,6 +35,22 @@
     transform:scale(0);transition:transform .18s cubic-bezier(.3,1.8,.5,1);box-shadow:0 6px 20px -4px rgba(255,210,63,.7)}
   .combo.on{transform:scale(1)}
   .spacer{flex:1}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+  .turn{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:800 .8rem/1 var(--f-display);padding:8px 14px;border-radius:999px;background:var(--c,#FFD23F);color:#1E1400;pointer-events:none;z-index:3;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .turn.pulse{animation:tp .45s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes tp{0%{transform:translateX(-50%) scale(.8)}100%{transform:translateX(-50%) scale(1)}}
   .chip{align-self:center;font:700 .72rem/1 var(--f-display);color:#CFE6FF;background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:999px;padding:7px 10px;white-space:nowrap}
   .next{display:grid;justify-items:center;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px 8px 5px;min-width:64px}
   .next small{font:600 .62rem/1 var(--f-body);color:var(--muted);letter-spacing:.08em}
@@ -100,7 +116,7 @@
 <canvas id="game" aria-label="ICE FLOE playing field"></canvas>
 
 <div class="hud" id="hud" hidden>
-  <div class="scorebox"><small>SCORE</small><b id="score">0</b><span class="best" id="best">Best 0</span></div>
+  <div class="scorebox"><small id="scoreLbl">SCORE</small><b id="score">0</b><span class="best" id="best">Best 0</span></div>
   <div class="combo" id="combo">x2</div>
   <div class="spacer"></div>
   <span class="chip" id="modeChip">Daily #1</span>
@@ -110,6 +126,8 @@
     <button class="ibtn" id="soundBtn" aria-label="Sound on"></button>
   </div>
 </div>
+
+<div class="turn" id="turn" hidden></div>
 
 <!-- start -->
 <div class="screen" id="menu">
@@ -127,6 +145,11 @@
       <button class="btn sun" id="playDaily"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span id="playDailyLbl">Play today's puzzle</span></button>
     </div>
     <button class="btn ghost" id="playEndless">Endless mode</button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, one fjord</button>
+    </div>
     <div class="howto">
       <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M9 8l-4 4 4 4M15 8l4 4-4 4"/></svg>Drag to aim</div>
       <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v13M7 12l5 5 5-5"/><path d="M6 21h12"/></svg>Let go to drop</div>
@@ -400,28 +423,34 @@ function pickTier(){
   for (let i = 0; i < w.length; i++) { if (x < w[i]) return i; x -= w[i]; }
   return 0;
 }
-function newRun(m){
-  mode = m;
+function newRun(m, r){
+  mode = m; if (r) rival = r; botAim = null; turnP = 0; duelEndT = 0;
+  players = m === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }] : m === "bot" ? [{ name: "You", color: "#FFD23F" }, { name: rival.name, color: rival.color, bot: true }] : [];
+  players.forEach(p => { p.score = 0; p.drops = 0; });
+  $("newBest").style.background = ""; $("reachedImg").closest(".reached").hidden = false; $("oToday").closest(".stats").hidden = false; $("scoreLbl").textContent = "SCORE"; $("scoreLbl").style.color = "";
   rng = mode === "daily" ? mulberry32(hashStr("icefloe:" + dayKey())) : mulberry32((Math.random() * 2 ** 32) >>> 0);
   bodies = []; parts = []; floats = []; score = 0; shown = 0; combo = 0; comboT = 0; drops = 0; highest = 0; danger = 0; sunsThisRun = 0;
   cur = pickTier(); nxt = pickTier(); cooldown = 0; aimX = BW / 2; startedAt = performance.now();
-  $("modeChip").textContent = mode === "daily" ? "Daily #" + dayNum() : "Endless";
+  $("modeChip").textContent = mode === "daily" ? "Daily #" + dayNum() : duel() ? "Duel" : "Endless";
   $("best").textContent = "Best " + (mode === "daily" ? (stats.daily[dayKey()] || 0) : stats.best);
   $("combo").classList.remove("on"); $("score").textContent = "0";
   drawNext();
-  show(null); $("hud").hidden = false; state = "play";
-  SDK.gameplayStart(); SDK.event("round_start", { mode });
+  show(null); $("hud").hidden = false; state = "play"; setTurn();
+  SDK.gameplayStart(); SDK.event("round_start", { mode, rival: mode === "bot" ? rival.id : "" });
 }
 function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
 
-function drop(){
+function drop(byBot){
   if (state !== "play" || cur < 0 || cooldown > 0) return;
+  if (duel() && (players[turnP].bot && !byBot || players[turnP].drops >= DUEL_DROPS)) return;
   const T = TIERS[cur];
   const x = clamp(aimX, T.r + 1, BW - T.r - 1);
-  bodies.push({ id: nextId++, x, y: AIM_Y, vx: 0, vy: 60, r: T.r, rt: T.r, tier: cur, ang: (rng() - .5) * .6, age: 0, blink: 1 + Math.random() * 3, pop: 0, look: 0 });
+  bodies.push({ id: nextId++, own: duel() ? turnP : -1, x, y: AIM_Y, vx: 0, vy: 60, r: T.r, rt: T.r, tier: cur, ang: (rng() - .5) * .6, age: 0, blink: 1 + Math.random() * 3, pop: 0, look: 0 });
   Sound.drop(cur); buzz(6);
   drops++; cur = -1; cooldown = .42;
+  if (duel()) { players[turnP].drops++; lastDropper = turnP; turnP = 1 - turnP; setTurn(); }
 }
+let lastDropper = 0;
 
 /* ---------------- physics ---------------- */
 function stepPhysics(dt){
@@ -471,24 +500,25 @@ function stepPhysics(dt){
 }
 
 function doMerge(a, b){
-  const t = a.tier, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  const t = a.tier, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, own = (a.id > b.id ? a : b).own;
+  const credit = pts => { if (duel() && own >= 0 && players[own]) { players[own].score += pts; setTurn(); } };
   a.dead = b.dead = true;
   combo = comboT > 0 ? combo + 1 : 1; comboT = 1.25;
   const mult = Math.min(combo, 8);
   if (t === MAX) {
-    const pts = 250 * mult; score += pts; sunsThisRun++; stats.suns++;
+    const pts = 250 * mult; score += pts; credit(pts); sunsThisRun++; stats.suns++;
     burst(mx, my, 70, TIERS[MAX].b, 520); burst(mx, my, 30, "#FFFFFF", 380);
     addFloat(mx, my, "+" + pts, TIERS[MAX].b, 1.6); addFloat(mx, my + 34, "MIDNIGHT SUN!", "#FFFFFF", 1.2);
     shake = 18; flash = .55; Sound.sun(); buzz([30, 40, 60]); SDK.happytime(); SDK.event("midnight_sun", { mode });
     // one sun stays and keeps glowing: the fjord keeps filling, so a long run gets harder, not easier
-    bodies.push({ id: nextId++, x: mx, y: my, vx: 0, vy: -120, r: TIERS[MAX].r, rt: TIERS[MAX].r, tier: MAX, ang: a.ang, age: 1, blink: 2, pop: 1, look: 0 });
+    bodies.push({ id: nextId++, own, x: mx, y: my, vx: 0, vy: -120, r: TIERS[MAX].r, rt: TIERS[MAX].r, tier: MAX, ang: a.ang, age: 1, blink: 2, pop: 1, look: 0 });
   } else {
     const nt = t + 1, T = TIERS[nt];
-    bodies.push({ id: nextId++, x: mx, y: my, vx: (a.vx + b.vx) / 2, vy: Math.min((a.vy + b.vy) / 2, 0) - 90, r: TIERS[t].r, rt: T.r, tier: nt, ang: (a.ang + b.ang) / 2, age: 1, blink: 2, pop: 1, look: 0 });
-    const pts = T.pts * mult; score += pts;
+    bodies.push({ id: nextId++, own, x: mx, y: my, vx: (a.vx + b.vx) / 2, vy: Math.min((a.vy + b.vy) / 2, 0) - 90, r: TIERS[t].r, rt: T.r, tier: nt, ang: (a.ang + b.ang) / 2, age: 1, blink: 2, pop: 1, look: 0 });
+    const pts = T.pts * mult; score += pts; credit(pts);
     if (nt > highest) { highest = nt; if (nt >= 4) { addFloat(mx, my - T.r - 16, T.name + "!", T.b, 1.1); SDK.event("tier_reached", { tier: nt + 1, name: T.name, mode }); } }
     burst(mx, my, 10 + nt * 4, T.b, 160 + nt * 40);
-    addFloat(mx, my, "+" + pts, "#FFFFFF", .9);
+    addFloat(mx, my, "+" + pts, duel() && own >= 0 ? players[own].color : "#FFFFFF", .9);
     shake = Math.max(shake, nt * 1.4); Sound.merge(nt, combo); buzz(8 + nt * 3);
   }
   const ce = $("combo");
@@ -504,8 +534,10 @@ function addFloat(x, y, text, col, size){ floats.push({ x, y, text, col, size, t
 let acc = 0;
 function update(dt){
   if (state !== "play") return;
+  if (botTurn()) botTick(dt);
+  if (duel() && players.every(p => p.drops >= DUEL_DROPS) && cooldown <= 0) { duelEndT += dt; if (duelEndT > 2.6) return duelOver(null); }
   // keyboard aim
-  const kdir = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+  const kdir = botTurn() ? 0 : (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
   if (kdir) aimX += kdir * 380 * dt;
   if (cur >= 0) aimX = clamp(aimX, TIERS[cur].r + 1, BW - TIERS[cur].r - 1);
   if (cooldown > 0) { cooldown -= dt; if (cooldown <= 0) { cur = nxt; nxt = pickTier(); drawNext(); } }
@@ -516,7 +548,7 @@ function update(dt){
   // danger: a resting piece above the line for too long ends the run
   let over = false;
   for (const b of bodies) if (b.age > 1.1 && b.y - b.r < DANGER_Y && Math.abs(b.vy) < 70) { over = true; break; }
-  if (over) { danger += dt; warnT -= dt; if (warnT <= 0) { Sound.warn(); buzz(15); warnT = .8; } if (danger > 2.4) gameOver(); }
+  if (over) { danger += dt; warnT -= dt; if (warnT <= 0) { Sound.warn(); buzz(15); warnT = .8; } if (danger > 2.4) { if (duel()) duelOver(players[lastDropper]); else gameOver(); } }
   else danger = Math.max(0, danger - dt * 1.5);
 }
 
@@ -581,7 +613,7 @@ function render(dt){
   ctx.restore();
   if (flash > 0) { ctx.fillStyle = "rgba(255,240,200," + flash + ")"; ctx.fillRect(0, 0, VW, VH); flash = Math.max(0, flash - dt * 1.2); }
   // score counter rolls up
-  if (shown !== score) { shown = score - shown < 2 ? score : Math.round(lerp(shown, score, Math.min(1, dt * 12))); $("score").textContent = shown.toLocaleString("en-US"); }
+  if (!duel() && shown !== score) { shown = score - shown < 2 ? score : Math.round(lerp(shown, score, Math.min(1, dt * 12))); $("score").textContent = shown.toLocaleString("en-US"); }
 }
 function roundRect(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 function drawBody(b, alpha, dt){
@@ -603,6 +635,80 @@ function drawNext(){
   const c = $("nextCv"), g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
   const T = TIERS[nxt], px = 30 / T.r, sp = makeSprite(nxt, px);
   g.drawImage(sp.c, (c.width - sp.size) / 2, (c.height - sp.size) / 2); drawFace(g, c.width / 2, c.height / 2, 30, 0, 0, 1, nxt);
+}
+
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(stats.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; stats.beaten = stats.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (stats.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ stats.beaten = stats.beaten || {}; const first = !stats.beaten[r.id]; stats.beaten[r.id] = true; saveStats(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "flurry", name: "Flurry", short: "Flurry", face: "F", color: "#46E0BE", blurb: "Drops on a whim", noise: 34, pick: 8 },
+  { id: "glacier", name: "Glacier", short: "Glacier", face: "G", color: "#FFA53D", blurb: "Patient and tidy", noise: 11, pick: 2 },
+  { id: "aurora", name: "Aurora", short: "Aurora", face: "A", color: "#FF6B9A", blurb: "Never wastes a merge", noise: 3, pick: 1 },
+];
+/* ---------------- duels ----------------
+   Two players share one fjord and take turns dropping. A merge scores for whoever dropped the newer
+   of the two pieces. 30 pieces each; most points wins, but the one who overflows the fjord loses. */
+const DUEL_DROPS = 30;
+let rival = RIVALS[0], players = [], turnP = 0, botAim = null, duelEndT = 0;
+const duel = () => mode === "duo" || mode === "bot";
+const botTurn = () => state === "play" && duel() && players[turnP] && players[turnP].bot;
+function setTurn(){
+  const t = $("turn"); if (!duel() || state !== "play") { t.hidden = true; return; }
+  const p = players[turnP], left = DUEL_DROPS - p.drops;
+  if (left <= 0) { t.hidden = false; t.style.setProperty("--c", "#FFFFFF"); t.textContent = "Last pieces settling…"; return; }
+  t.hidden = false; t.style.setProperty("--c", p.color);
+  t.textContent = (p.bot ? p.name + " drops" : mode === "bot" ? "Your drop" : p.name) + " · " + left + " left";
+  t.classList.remove("pulse"); void t.offsetWidth; t.classList.add("pulse");
+  $("scoreLbl").textContent = (p.bot ? p.name : mode === "bot" ? "YOU" : p.name).toUpperCase(); $("scoreLbl").style.color = p.color;
+  const o = players[1 - turnP]; $("best").textContent = (o.bot ? o.name : mode === "bot" ? "You" : o.name) + " " + o.score.toLocaleString("en-US");
+  shown = p.score; $("score").textContent = p.score.toLocaleString("en-US");
+}
+// the computer reads the surface: where would the piece land, and would it touch its twin?
+function landAt(x, r){ let y = BH - r, hit = null; for (const b of bodies) { const dx = Math.abs(b.x - x), rr = b.r + r; if (dx >= rr) continue; const cy = b.y - Math.sqrt(rr * rr - dx * dx); if (cy < y) { y = cy; hit = b; } } return { y, hit }; }
+function botChoose(){
+  const r = TIERS[cur].r, c = [];
+  for (let x = r + 1; x <= BW - r - 1; x += 4) { const L = landAt(x, r); let sc = L.y * .25;
+    if (L.hit && L.hit.tier === cur) sc += 140 + cur * 25;
+    else if (L.hit && L.hit.tier < cur) sc -= 25 * (cur - L.hit.tier);         // burying small pieces is bad
+    for (const b of bodies) if (b.tier === cur && Math.abs(b.x - x) < b.r + r + 6 && Math.abs(b.y - L.y) < b.r + r + 10) sc += 40;
+    c.push({ x, sc }); }
+  c.sort((p, q) => q.sc - p.sc);
+  const pick = c[Math.floor(Math.random() * Math.min(rival.pick, c.length))];
+  return clamp(pick.x + gauss() * rival.noise, r + 1, BW - r - 1);
+}
+function botTick(dt){
+  if (cur < 0) return;
+  if (!botAim) botAim = { x: botChoose(), t: 0 };
+  botAim.t += dt; aimX = lerp(aimX, botAim.x, Math.min(1, dt * 6));
+  if (botAim.t > .75) { aimX = botAim.x; botAim = null; drop(true); }
+}
+function duelOver(loser){
+  if (state !== "play") return;
+  state = "over"; SDK.gameplayStop(); $("turn").hidden = true;
+  const [a, b] = players; let w = loser ? players[1 - players.indexOf(loser)] : a.score === b.score ? null : a.score > b.score ? a : b;
+  const nm = p => p.bot ? p.name : mode === "bot" ? "You" : p.name;
+  let unl = "";
+  if (mode === "bot" && w && !w.bot) { unl = beatRival(rival); SDK.happytime(); Sound.best(); } else if (w) Sound.best(); else Sound.over();
+  SDK.levelEnd(mode, "done", Math.max(a.score, b.score)); SDK.event("duel_end", { mode, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (w && !w.bot ? 1 : 0) : -1 });
+  setTimeout(() => {
+    $("overTitle").textContent = mode === "bot" ? "You vs " + rival.name : "Player 1 vs Player 2";
+    $("finalScore").textContent = a.score.toLocaleString("en-US") + " – " + b.score.toLocaleString("en-US");
+    const rb = $("newBest"); rb.hidden = false; rb.style.background = w ? w.color : ""; rb.textContent = !w ? "A draw!" : mode === "bot" ? (w.bot ? rival.name + " wins" : "You win!") : w.name + " wins!";
+    $("reachedImg").closest(".reached").hidden = true; $("oToday").closest(".stats").hidden = true;
+    $("overNote").textContent = (loser ? nm(loser) + " overflowed the fjord." : "All " + DUEL_DROPS * 2 + " pieces dropped.") + (unl ? " " + unl + "." : "");
+    $("hud").hidden = true; show("over");
+  }, 900);
 }
 
 /* ---------------- game over & sharing ---------------- */
@@ -634,6 +740,7 @@ function gameOver(){
   }, 900);
 }
 function shareText(){
+  if (duel()) return "ICE FLOE duel: " + $("newBest").textContent + " " + players.map(p => p.score.toLocaleString("en-US")).join(" – ") + " 🧊\n" + SHARE_URL;
   const final = score, ladder = TIERS.map((t, i) => i <= highest ? EMOJI[i] : "▫️").join("");
   const head = mode === "daily" ? "ICE FLOE #" + dayNum() : "ICE FLOE endless";
   const streak = liveStreak();
@@ -650,7 +757,7 @@ async function share(){
 let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2400); }
 
 /* ---------------- menus ---------------- */
-function refreshMenu(){
+function refreshMenu(){ buildRivals();
   const k = dayKey(), today = stats.daily[k] || 0;
   $("dailyTag").textContent = "Today's puzzle #" + dayNum();
   $("sToday").textContent = today ? today.toLocaleString("en-US") : "–";
@@ -670,17 +777,17 @@ function soundIcon(){
 }
 function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); show("pause"); }
 function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
-function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; refreshMenu(); show("menu"); }
+function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; $("turn").hidden = true; refreshMenu(); show("menu"); }
 
 /* ---------------- input ---------------- */
 const unlock = () => Sound.init();
 cv.addEventListener("pointerdown", e => {
-  unlock(); if (state !== "play") return;
+  unlock(); if (state !== "play" || botTurn()) return;
   pointerActive = true; wasTouch = e.pointerType !== "mouse"; aimX = toWorldX(e.clientX);
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
 });
-cv.addEventListener("pointermove", e => { if (state !== "play") return; if (pointerActive || e.pointerType === "mouse") aimX = toWorldX(e.clientX); });
-cv.addEventListener("pointerup", e => { if (state !== "play" || !pointerActive) return; pointerActive = false; aimX = toWorldX(e.clientX); drop(); });
+cv.addEventListener("pointermove", e => { if (state !== "play" || botTurn()) return; if (pointerActive || e.pointerType === "mouse") aimX = toWorldX(e.clientX); });
+cv.addEventListener("pointerup", e => { if (state !== "play" || !pointerActive || botTurn()) { pointerActive = false; return; } pointerActive = false; aimX = toWorldX(e.clientX); drop(); });
 cv.addEventListener("pointercancel", () => { pointerActive = false; });
 addEventListener("keydown", e => {
   keys[e.code] = true; unlock();
@@ -695,8 +802,8 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pause
 function toggleSound(){ stats.sound = !stats.sound; saveStats(); Sound.setOn(stats.sound); soundIcon(); }
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); unlock(); fn(); });
 tap("playDaily", () => newRun("daily")); tap("playEndless", () => newRun("endless"));
-tap("againBtn", () => newRun(mode)); tap("menuBtn", toMenu); tap("shareBtn", share);
-tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => newRun(mode)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
+tap("againBtn", () => newRun(mode, rival)); tap("duoBtn", () => newRun("duo")); onRival(r => newRun("bot", r)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => newRun(mode, rival)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
 
 /* ---------------- loop ---------------- */
 let last = performance.now();
@@ -714,7 +821,7 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 // let the demo pieces settle visibly behind the menu as well
 setInterval(() => { if (state === "menu" || state === "over") { stepPhysics(1 / 60); } }, 1000 / 60);
 if (location.hash === "#endless") newRun("endless");
-if (/[?&]debug=1/.test(location.search)) window.__icefloe = { info: () => ({ state, danger: Math.round(danger*100)/100, maxAbove: bodies.filter(b => b.age > 1.1 && b.y - b.r < DANGER_Y).map(b => Math.round(b.vy)), n: bodies.length, top: Math.round(Math.min(...bodies.map(b => b.y - b.r))), score, highest, drops }) };
+if (/[?&]debug=1/.test(location.search)) window.__icefloe = { newRun, RIVALS, get turnP(){ return turnP; }, get players(){ return players; }, aim(x){ aimX = x; }, drop: () => drop(), info: () => ({ state, cur, cooldown, danger: Math.round(danger*100)/100, maxAbove: bodies.filter(b => b.age > 1.1 && b.y - b.r < DANGER_Y).map(b => Math.round(b.vy)), n: bodies.length, top: Math.round(Math.min(...bodies.map(b => b.y - b.r))), score, highest, drops }) };
 })();
 </script>
 </body>

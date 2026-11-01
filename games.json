@@ -256,13 +256,15 @@
     "about": [
       "Drop pieces of ice into the fjord. When two matching pieces touch they merge into the next size up, from a tiny snowflake all the way to the Midnight Sun. The pieces tumble, roll and settle for real, so every drop shifts the whole pile.",
       "Chain merges quickly to build a combo multiplier. Let the ice rest above the dashed line for too long and the run is over. Once you reach the Midnight Sun it stays on the board and keeps glowing, so the fjord fills up faster.",
-      "Every day there is a new puzzle with the same pieces for everyone. Share your result and compare with friends, keep your daily streak alive, or play Endless mode for new pieces every round."
+      "Every day there is a new puzzle with the same pieces for everyone. Share your result and compare with friends, keep your daily streak alive, or play Endless mode for new pieces every round.",
+      "In a duel two players share one fjord and take turns dropping. A merge scores for whoever dropped the piece that made it. Thirty pieces each, most points wins, and whoever overflows the fjord loses. Play a friend on the same phone or one of three computer rivals."
     ],
     "features": [
       "A new daily puzzle, the same for everyone",
       "8 pieces from Snowflake to Midnight Sun",
       "Combo multiplier for quick chains",
-      "Daily streak and shareable results"
+      "Daily streak and shareable results",
+      "Duel a friend in one fjord, or play the computer"
     ],
     "controls": [
       [
@@ -289,21 +291,23 @@
     "facts": {
       "Genre": "Merge puzzle",
       "A round": "A few minutes",
-      "Players": "1",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Saved in this browser"
     },
     "keywords": "merge game, suika-like, daily puzzle, physics puzzle, drop and merge, free puzzle game",
     "touchOrientation": "any",
     "categories": [
       "puzzle",
-      "casual"
+      "casual",
+      "two-player"
     ],
     "tags": [
       "Merge",
       "Daily puzzle",
       "Physics",
       "Relaxing",
-      "Share your score"
+      "Share your score",
+      "Vs computer"
     ],
     "added": "2026-10-29",
     "featured": 2
@@ -319,13 +323,15 @@
     "about": [
       "Aim with the dotted guide and let go. Your whole volley of balls fires in a stream, bouncing off walls and blocks. Each hit takes one point off a block, and a block breaks when it reaches zero. Where the first ball lands is where you fire from next turn.",
       "After every turn the blocks move down a row and a new, tougher row appears. Fly through green rings for extra balls, hit lasers to strike a whole row or column at once and pick up coins on the way. If a block reaches the floor, the run is over.",
-      "Spend coins on new balls, or to clear the bottom rows and keep a good run going. The daily challenge gives everyone the same blocks for the day, with streaks and a score to share."
+      "Spend coins on new balls, or to clear the bottom rows and keep a good run going. The daily challenge gives everyone the same blocks for the day, with streaks and a score to share.",
+      "In a duel both players get exactly the same blocks and take turns on their own field. Whoever lets the blocks reach the floor first loses. Pass the phone to a friend or take on Pip, Echo and Vertex."
     ],
     "features": [
       "Fire volleys of up to hundreds of balls",
       "Extra balls, row and column lasers, coins",
       "Daily challenge with streaks",
-      "6 ball styles to unlock, continue with coins"
+      "6 ball styles to unlock, continue with coins",
+      "Duels on identical blocks, vs a friend or the computer"
     ],
     "controls": [
       [
@@ -352,21 +358,23 @@
     "facts": {
       "Genre": "Ball breaker",
       "A round": "5 to 20 minutes",
-      "Players": "1",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Best level, coins and balls saved in this browser"
     },
     "keywords": "ball breaker, ballz, bricks breaker, block breaker, aim and shoot balls, daily puzzle, free online game",
     "touchOrientation": "portrait",
     "categories": [
       "casual",
-      "puzzle"
+      "puzzle",
+      "two-player"
     ],
     "tags": [
       "Aim and shoot",
       "Physics",
       "Daily challenge",
       "High score",
-      "Upgrades"
+      "Upgrades",
+      "Vs computer"
     ],
     "added": "2026-10-31",
     "featured": 0
@@ -382,13 +390,15 @@
     "about": [
       "A block slides across the top of your tower. Tap to drop it. The part that lands on the block below stays, the part hanging over the edge breaks off and falls, and the next block is only as big as what is left.",
       "Land a block exactly on the one below for a perfect drop. Each perfect plays the next note of a rising tune, and from the third in a row the block starts growing back, so a long perfect run can save a tower that was getting thin.",
-      "The higher you climb, the faster the blocks slide and the sky changes from day to dusk to stars. Beat your best height to unlock new tower styles: Sunset, Candy, Aurora, Glacier and Neon."
+      "The higher you climb, the faster the blocks slide and the sky changes from day to dusk to stars. Beat your best height to unlock new tower styles: Sunset, Candy, Aurora, Glacier and Neon.",
+      "In a duel you take turns on the same tower, with a friend on one phone or against the computer. Whatever you trim off makes the block smaller for your opponent, and the first to miss the tower completely loses."
     ],
     "features": [
       "One-tap controls, a round takes a minute",
       "Perfect drops play a tune and grow the block back",
       "6 tower styles to unlock",
-      "Best height and perfect streak saved"
+      "Best height and perfect streak saved",
+      "Duel on one tower: miss it and you lose"
     ],
     "controls": [
       [
@@ -410,20 +420,21 @@
     "facts": {
       "Genre": "One-tap arcade",
       "A round": "About a minute",
-      "Players": "1",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Best height and styles saved in this browser"
     },
     "keywords": "stack game, tower stacking, one tap game, stack blocks, tower builder, free online arcade game",
     "touchOrientation": "any",
     "categories": [
-      "casual"
+      "casual",
+      "two-player"
     ],
     "tags": [
       "One tap",
       "Stacking",
       "Reflexes",
       "High score",
-      "Relaxing"
+      "Vs computer"
     ],
     "added": "2026-10-31",
     "featured": 0
@@ -439,13 +450,13 @@
     "about": [
       "Every round draws nine holes from a pool of 25 handmade ones, and any of them can come flipped left to right, so you rarely play the same course twice. Rounds open gently and build to the hardest holes: bank shots, sand traps, bumper alleys, ice rinks, ferries that slide across the gap, tide slopes, portals and spinning windmills.",
       "Drag back from anywhere to aim and set the power, then let go to putt. Water costs a stroke and puts the ball back where you hit from. Sink it in one for a hole in one.",
-      "The daily course is the same nine holes for everyone that day. Post your scorecard, keep your streak going and come back tomorrow for a new one. Or take turns with a friend on the same device."
+      "The daily course is the same nine holes for everyone that day. Post your scorecard, keep your streak going and come back tomorrow for a new one. Or play head to head: take turns with a friend on the same phone, or take on three computer rivals who read the green and get better as you unlock them."
     ],
     "features": [
       "25 handmade holes, a new nine-hole course every round",
       "Daily course with streaks and shareable scorecards",
       "Windmills, ice, bumpers, ferries, slopes, sand, water and portals",
-      "2 players take turns on one device"
+      "2 players on one phone, or 3 computer rivals to beat"
     ],
     "controls": [
       [
@@ -467,7 +478,7 @@
     "facts": {
       "Genre": "Mini golf",
       "A round": "9 holes",
-      "Players": "1, or 2 taking turns",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Best round, daily score and streak saved in this browser"
     },
     "keywords": "mini golf, minigolf, putt putt, golf game, free mini golf online, 2 player golf",
@@ -482,7 +493,8 @@
       "Physics",
       "Windmill",
       "Hole in one",
-      "Play with friends"
+      "Play with friends",
+      "Vs computer"
     ],
     "added": "2026-10-30",
     "featured": 0
@@ -526,7 +538,7 @@
     "facts": {
       "Genre": "Darts",
       "A round": "Best of 3 legs",
-      "Players": "1 vs bot, or 2 on one device",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Unlocked rivals saved in this browser"
     },
     "keywords": "darts game, 301 darts, dartboard, pub darts, play darts online, 2 player darts",
@@ -556,13 +568,14 @@
     "about": [
       "Six ends of three arrows each, from 18 metres out to 70. Drag back to draw the bow: the length of the pull sets the power and the direction sets the angle. A short guide shows the first part of the flight, the rest is up to you.",
       "Watch the wind sock and the flag on the target. A tailwind carries the arrow higher, a headwind makes it drop. The camera follows every arrow all the way to the boss and shows you exactly where it landed.",
-      "Shoot the daily range with the same wind as everyone else and share your result, take a free round, or duel a friend arrow by arrow on the same device."
+      "Shoot the daily range with the same wind as everyone else and share your result, take a free round, or duel a friend arrow by arrow on the same device.",
+      "Want an opponent? Hand the phone to a friend and shoot arrow by arrow, or take on Robin, Fletcher and the Marksman. Each computer archer reads the wind a little better than the last."
     ],
     "features": [
       "6 ends from 18 to 70 metres",
       "Wind that changes every end",
       "Daily range with a streak and shareable result",
-      "2 players shoot arrow by arrow"
+      "2 players on one phone, or 3 computer archers to beat"
     ],
     "controls": [
       [
@@ -589,7 +602,7 @@
     "facts": {
       "Genre": "Archery",
       "A round": "6 ends, 18 arrows",
-      "Players": "1, or 2 on one device",
+      "Players": "1, 2 on one phone, or vs the computer",
       "Progress": "Daily best and streak saved in this browser"
     },
     "keywords": "archery game, bow and arrow game, target shooting, archery online, free archery game, daily challenge",
@@ -604,7 +617,8 @@
       "Wind",
       "Daily challenge",
       "Bow and arrow",
-      "Play with friends"
+      "Play with friends",
+      "Vs computer"
     ],
     "added": "2026-10-30",
     "featured": 0

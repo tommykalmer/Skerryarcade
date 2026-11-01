@@ -40,6 +40,8 @@
   .wind{display:flex;align-items:center;gap:8px;font:700 .82rem/1 var(--f-display);white-space:nowrap}
   .wind svg{width:26px;height:16px;transition:transform .4s}
   .wind small{font:600 .72rem/1 var(--f-body);color:var(--muted)}
+  .wind{max-width:100%;overflow:hidden}
+  @media (max-width:430px){.duo .wind small{display:none}.duo .score{min-width:78px}.duo .wind{gap:6px;font-size:.76rem}}
   .ibtns{display:grid;gap:6px}
   .ibtn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
   .ibtn svg{width:19px;height:19px}
@@ -67,6 +69,19 @@
   .btn.sun{background:var(--sun);color:var(--sun-ink);box-shadow:0 6px 0 #C89A00,0 14px 30px -8px rgba(255,210,63,.6)}
   .btn.sun:active{transform:translateY(4px);box-shadow:0 2px 0 #C89A00}
   .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
   .big{font:800 clamp(2.6rem,13vw,3.8rem)/1 var(--f-display);margin:0;font-variant-numeric:tabular-nums}
   .note{font-size:.82rem;color:var(--muted);margin:0}
@@ -116,7 +131,12 @@
       </div>
       <button class="btn sun" id="dailyBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span id="dailyLbl">Shoot today's range</span></button>
     </div>
-    <div class="row2"><button class="btn ghost" id="freeBtn">Free round</button><button class="btn ghost" id="duoBtn">2 players</button></div>
+    <button class="btn ghost" id="freeBtn">Free round</button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players on this phone</button>
+    </div>
     <p class="note">Tip: a tailwind carries the arrow higher, a headwind drops it.</p>
   </div>
 </div>
@@ -230,16 +250,16 @@ let mode = "daily", state = "menu", players = [], cur = 0, endIdx = 0, arrowIdx 
 let cam = { x: 0, zoom: 1, zy: 1 }, phase = "aim";   // aim | fly | look | return
 let draw = null, arrow = null, stuck = [], slow = 1, lookT = 0, faceZoom = 0, lastHit = null, ghost = [], lastShot = [], notes = [];
 let angle = 6 * Math.PI / 180, power = .7, keysDown = {};
-function mkPlayer(name, color){ return { name, color, total: 0, xs: 0, ends: DISTANCES.map(() => []) }; }
-function startRound(m){
-  mode = m; endIdx = 0; arrowIdx = 0; cur = 0; stuck = []; ghost = []; lastShot = []; notes = [];
+function mkPlayer(name, color, isBot){ return { name, color, bot: !!isBot, total: 0, xs: 0, ends: DISTANCES.map(() => []) }; }
+function startRound(m, r){
+  mode = m; if (r) rival = r; bot = null; endIdx = 0; arrowIdx = 0; cur = 0; stuck = []; ghost = []; lastShot = []; notes = [];
   rng = m === "daily" ? mulberry32(hashStr("longshot:" + dayKey())) : mulberry32((Math.random() * 2 ** 32) >>> 0);
   winds = DISTANCES.map((d, i) => { const max = 1 + i * 1.1; return Math.round((rng() * 2 - 1) * max * 2) / 2; });
-  players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#46E0BE")] : [mkPlayer(m === "daily" ? "Daily #" + dayNum() : "Score", "#FFD23F")];
-  document.body.classList.toggle("duo", m === "duo");
+  players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#46E0BE")] : m === "bot" ? [mkPlayer("You", "#FFD23F"), mkPlayer(rival.name, rival.color, true)] : [mkPlayer(m === "daily" ? "Daily #" + dayNum() : "Score", "#FFD23F")];
+  document.body.classList.toggle("duo", players.length === 2);
   phase = "aim"; cam.x = 0; cam.zoom = fitZoom(); cam.zy = Math.max(cam.zoom, ZY_MIN()); arrow = null; draw = null; setHint();
   show(null); $("hud").hidden = false; state = "play"; hud();
-  SDK.gameplayStart(); SDK.event("round_start", { mode });
+  SDK.gameplayStart(); SDK.event("round_start", { mode, rival: mode === "bot" ? rival.id : "" });
 }
 const dist = () => DISTANCES[endIdx];
 const wind = () => winds[endIdx];
@@ -249,7 +269,7 @@ function launch(){
   const v = lerp(17, 47, power);
   arrow = { x: BOW.x, y: BOW.y, vx: Math.cos(angle) * v, vy: Math.sin(angle) * v, z: 0, t: 0, done: false, trail: [], path: [{ x: BOW.x, y: BOW.y }], pt: 0 };
   lastShot[cur] = { angle, power };
-  phase = "fly"; Sound.twang(power); Sound.whoosh(); buzz(12); $("hint").style.opacity = 0;
+  phase = "fly"; Sound.twang(power); Sound.whoosh(); if (!players[cur].bot) buzz(12); $("hint").style.opacity = 0;
 }
 function stepArrow(dt){
   const a = arrow, W = wind();
@@ -297,6 +317,7 @@ function endShot(note){
 }
 function setHint(){
   const h = $("hint"), ls = lastShot[cur], n = notes[cur];
+  if (players[cur] && players[cur].bot) { h.textContent = players[cur].name + " is reading the wind…"; h.style.opacity = 1; return; }
   if (ls && n) h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "last arrow " + (Math.round(ls.angle * 1800 / Math.PI) / 10) + "° · " + Math.round(ls.power * 100) + "% power · " + n;
   else if (endIdx > 0 && arrowIdx === 0) h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "new distance, " + dist() + " m. Wind " + (wind() === 0 ? "calm" : Math.abs(wind()) + " m/s " + (wind() > 0 ? "behind you" : "against you")) + ".";
   else h.textContent = (players.length > 1 ? players[cur].name + ": " : "") + "drag back to draw the bow. The angle sets the arc, the pull sets the power.";
@@ -316,20 +337,75 @@ function nextShot(){
   arrow = null; phase = "return"; hud(); setHint();
 }
 
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(save.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; save.beaten = save.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ save.beaten = save.beaten || {}; const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "robin", name: "Robin", short: "Robin", face: "R", color: "#46E0BE", blurb: "Forgets the wind", sa: .008, sp: .04, wind: .9, pw: .62 },
+  { id: "fletcher", name: "Fletcher", short: "Fletcher", face: "F", color: "#FFA53D", blurb: "Steady in a breeze", sa: .0038, sp: .019, wind: .4, pw: .78 },
+  { id: "marksman", name: "The Marksman", short: "Marksman", face: "M", color: "#FF6B9A", blurb: "Lives in the gold", sa: .002, sp: .01, wind: .15, pw: .9 },
+];
+let rival = RIVALS[0], bot = null;
+/* ---------------- the computer archer ----------------
+   It solves the shot with the same flight physics (reading the wind with some error), then its hands shake. */
+function crossY(ang, pw, D, W){
+  let x = BOW.x, y = BOW.y; const v = lerp(17, 47, pw); let vx = Math.cos(ang) * v, vy = Math.sin(ang) * v; const h = 1 / 240;
+  for (let t = 0; t < 6; t += h) { vx += (-DRAG * vx * Math.abs(vx) / 30 + WIND_K * W) * h; vy += (-G - DRAG * vy) * h; const px = x, py = y; x += vx * h; y += vy * h;
+    if (px < D && x >= D) return py + (y - py) * (D - px) / (x - px); if (y <= 0) return -5; }
+  return -5;
+}
+function solveAngle(pw, D, W){
+  let lo = -.17, hi = .6;
+  if (crossY(hi, pw, D, W) < FACE_Y) return hi;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (crossY(m, pw, D, W) < FACE_Y) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+function botPlan(){
+  const D = dist(), Wseen = wind() * (1 + gauss() * rival.wind), pw = clamp(rival.pw + gauss() * .03, .35, 1);
+  const a = solveAngle(pw, D, Wseen) + gauss() * rival.sa * (D / 30), p = clamp(pw * (1 + gauss() * rival.sp), .3, 1);
+  return { a, p, t: 0 };
+}
+const botTurn = () => state === "play" && players[cur] && players[cur].bot;
+function botTick(dt){
+  if (phase !== "aim") return;
+  if (!bot) { bot = botPlan(); bot.a0 = angle; draw = { bot: true }; power = 0; }
+  bot.t += dt;
+  const k = clamp((bot.t - .35) / 1.1, 0, 1), e = k * k * (3 - 2 * k);
+  angle = lerp(bot.a0, bot.a, e); power = bot.p * e; if (k > 0 && k < 1) Sound.draw(power);
+  if (bot.t > 1.75) { angle = bot.a; power = bot.p; draw = null; bot = null; launch(); }
+}
+
 /* ---------------- finishing ---------------- */
 let shareTxt = "";
 function finish(){
   state = "over"; SDK.gameplayStop(); arrow = null;
   const p = players[0]; let newBest = false;
-  if (mode !== "duo") {
+  if (mode !== "duo" && mode !== "bot") {
     if (p.total > save.best) { save.best = p.total; newBest = true; }
     if (mode === "daily") { const k = dayKey(); if (save.lastDaily !== k) { save.streak = save.lastDaily === prevKey(k) ? save.streak + 1 : 1; save.lastDaily = k; } save.daily[k] = Math.max(save.daily[k] || 0, p.total); }
   }
   store(); Sound.cheer();
-  SDK.levelEnd(mode === "daily" ? "daily_" + dayNum() : mode, "done", p.total);
+  SDK.levelEnd(mode === "daily" ? "daily_" + dayNum() : mode, "done", p.total); buildRivals();
   if (newBest) SDK.happytime();
   const emo = v => v === "X" || v >= 9 ? "🟡" : v >= 7 ? "🔴" : v >= 5 ? "🔵" : v >= 3 ? "⚫" : v >= 1 ? "⚪" : "✖️";
-  if (mode === "duo") {
+  if (mode === "bot") {
+    const [a, b] = players, won = a.total > b.total, unl = won ? beatRival(rival) : "";
+    $("overSub").textContent = "You vs " + rival.name; $("overScore").textContent = a.total + " – " + b.total;
+    $("overTitle").textContent = (a.total === b.total ? "A draw!" : won ? "You beat " + rival.name + "!" : rival.name + " wins this time") + (unl ? " · " + unl : "");
+    if (won) SDK.happytime();
+    shareTxt = "Longshot archery: " + (won ? "I beat " + rival.name + " " : a.total === b.total ? "A draw with " + rival.name + " " : rival.name + " beat me ") + a.total + " – " + b.total + " 🏹";
+  } else if (mode === "duo") {
     const [a, b] = players, w = a.total === b.total ? null : a.total > b.total ? a : b;
     $("overSub").textContent = "2 players"; $("overScore").textContent = a.total + " – " + b.total;
     $("overTitle").textContent = w ? w.name + " wins!" : "A draw!";
@@ -537,9 +613,10 @@ function drawFace(){
 /* ---------------- update ---------------- */
 function update(dt){
   if (state !== "play") return;
-  if (keysDown.ArrowUp || keysDown.KeyW) angle = clamp(angle + .25 * dt, -.17, .8);
+  if (botTurn()) botTick(dt);
+  else if (keysDown.ArrowUp || keysDown.KeyW) angle = clamp(angle + .25 * dt, -.17, .8);
   if (keysDown.ArrowDown || keysDown.KeyS) angle = clamp(angle - .25 * dt, -.17, .8);
-  if (keysDown.Space && phase === "aim" && draw) { power = clamp(power + dt * .55, 0, 1); Sound.draw(power); }
+  if (keysDown.Space && phase === "aim" && draw && !botTurn()) { power = clamp(power + dt * .55, 0, 1); Sound.draw(power); }
   if (phase === "fly" && arrow) {
     const near = dist() - arrow.x;
     slow = near < 4 && near > -1 ? lerp(slow, .25, .2) : lerp(slow, 1, .2);
@@ -561,17 +638,18 @@ function update(dt){
 
 /* ---------------- input ---------------- */
 cv.addEventListener("pointerdown", e => {
-  Sound.init(); if (state !== "play" || phase !== "aim") return;
+  Sound.init(); if (state !== "play" || phase !== "aim" || botTurn()) return;
   draw = { x: e.clientX, y: e.clientY, a0: angle }; power = 0; try { cv.setPointerCapture(e.pointerId); } catch (_) {}
 });
 cv.addEventListener("pointermove", e => {
-  if (!draw || phase !== "aim") return;
+  if (!draw || phase !== "aim" || draw.bot) return;
   const dx = draw.x - e.clientX, dy = e.clientY - draw.y, len = Math.hypot(dx, dy);
   power = clamp(len / Math.min(220, VW * .45), 0, 1);
   if (len > 12) angle = clamp(Math.atan2(dy, Math.max(8, dx)), -.17, .8);
   Sound.draw(power);
 });
 cv.addEventListener("pointerup", () => {
+  if (botTurn()) return;
   if (!draw || phase !== "aim") { draw = null; return; }
   const p = power; draw = null;
   if (p < .12) { power = .7; return; }
@@ -580,12 +658,12 @@ cv.addEventListener("pointerup", () => {
 cv.addEventListener("pointercancel", () => { draw = null; });
 addEventListener("keydown", e => {
   keysDown[e.code] = true; Sound.init();
-  if (e.code === "Space" && state === "play" && phase === "aim" && !draw) { e.preventDefault(); draw = { key: true }; power = 0; }
+  if (e.code === "Space" && state === "play" && phase === "aim" && !draw && !botTurn()) { e.preventDefault(); draw = { key: true }; power = 0; }
   if (e.code === "KeyP" || e.code === "Escape") state === "play" ? pause() : state === "pause" && resume();
   if (e.code === "KeyM") toggleSound();
   if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
 });
-addEventListener("keyup", e => { keysDown[e.code] = false; if (e.code === "Space" && draw && draw.key) { draw = null; if (power >= .12) launch(); } });
+addEventListener("keyup", e => { keysDown[e.code] = false; if (e.code === "Space" && draw && draw.key && !botTurn()) { draw = null; if (power >= .12) launch(); } });
 addEventListener("blur", () => { keysDown = {}; pause(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
 
@@ -594,24 +672,25 @@ function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !=
 function refreshMenu(){
   const t = save.daily[dayKey()];
   $("dailyTag").textContent = "Daily range #" + dayNum(); $("sToday").textContent = t != null ? t : "–"; $("sStreak").textContent = liveStreak(); $("sBest").textContent = save.best;
+  buildRivals();
   $("dailyLbl").textContent = t != null ? "Beat today's score" : "Shoot today's range"; $("dailyMeta").textContent = t != null ? "Shot today" : "Same wind for everyone";
 }
-function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); draw = null; show("pause"); }
+function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); if (!botTurn()) draw = null; show("pause"); }
 function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
 function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; refreshMenu(); show("menu"); }
 function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
 function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
 tap("dailyBtn", () => startRound("daily")); tap("freeBtn", () => startRound("free")); tap("duoBtn", () => startRound("duo"));
-tap("againBtn", () => startRound(mode)); tap("menuBtn", toMenu); tap("shareBtn", share);
-tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => startRound(mode)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
+tap("againBtn", () => startRound(mode, rival)); onRival(r => startRound("bot", r)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => startRound(mode, rival)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
 
 let last = performance.now();
 function frame(now){ const dt = Math.min(.05, (now - last) / 1000); last = now; update(dt); render(state === "pause" ? 0 : dt); requestAnimationFrame(frame); }
 addEventListener("resize", layout);
 layout(); refreshMenu(); soundIcon(); winds = [1.5];
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
-if (/[?&]debug=1/.test(location.search)) window.__ls = { info: () => ({ state, phase, endIdx, arrowIdx, cur, totals: players.map(p => p.total), wind: wind(), angle, power }), set: (a, p) => { angle = a; power = p; }, fire: () => launch() };
+if (/[?&]debug=1/.test(location.search)) window.__ls = { startRound, RIVALS, crossY, solveAngle, info: () => ({ state, phase, endIdx, arrowIdx, cur, totals: players.map(p => p.total), wind: wind(), angle, power }), set: (a, p) => { angle = a; power = p; }, fire: () => launch() };
 })();
 </script>
 </body>

@@ -73,6 +73,19 @@
   .btn.daily span{display:grid;gap:3px;text-align:center}
   .btn.daily b{font:800 .95rem/1 var(--f-display)}
   .btn.daily small{font:600 .74rem/1.1 var(--f-body);opacity:.85}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
   .sc{width:100%;overflow-x:auto}
   .sc table{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums}
   .sc td,.sc th{padding:6px 3px;text-align:center;border-bottom:1px solid var(--line)}
@@ -113,8 +126,12 @@
     <button class="btn sun" id="soloBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>Play 9 holes</button>
     <p class="note tight">A fresh course every round</p>
     <button class="btn daily" id="dailyBtn"><span><b id="dailyName">Daily course</b><small id="dailySub">Same nine holes for everyone today</small></span></button>
-    <button class="btn ghost" id="duoBtn">2 players, take turns</button>
-    <p class="note">Max 7 strokes per hole. Water costs one stroke.</p>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players on this phone</button>
+    </div>
+    <p class="note" id="menuNote">Max 7 strokes per hole. Water costs one stroke.</p>
   </div>
 </div>
 <div class="screen" id="over" hidden>
@@ -360,12 +377,12 @@ function step(sim, b, t, dt, fx){
 /* ---------------- game state ---------------- */
 let state = "menu", mode = "solo", players = [], cur = 0, holeIdx = 0, sim = null, ball = null, phase = "aim", time = 0;
 let aim = null, lastRest = null, trail = [], sinkT = 0, particles = [], splashT = 0, shotPower = 0;
-function mkPlayer(name, color){ return { name, color, scores: [] }; }
-function startRound(m, isDaily){
-  mode = m; daily = !!isDaily; dailyNo = dayNo();
-  COURSE = buildCourse(daily ? dailyNo * 7919 + 13 : (Math.random() * 4294967296) >>> 0); players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#FF7EB6")] : [mkPlayer("You", "#FFD23F")];
+function mkPlayer(name, color, isBot){ return { name, color, bot: !!isBot, scores: [] }; }
+function startRound(m, isDaily, r){
+  mode = m; daily = !!isDaily && m === "solo"; dailyNo = dayNo(); if (r) rival = r; bot = null;
+  COURSE = buildCourse(daily ? dailyNo * 7919 + 13 : (Math.random() * 4294967296) >>> 0); players = m === "duo" ? [mkPlayer("Player 1", "#FFD23F"), mkPlayer("Player 2", "#FF7EB6")] : m === "bot" ? [mkPlayer("You", "#FFD23F"), mkPlayer(rival.name, rival.color, true)] : [mkPlayer("You", "#FFD23F")];
   holeIdx = 0; cur = 0; show(null); $("hud").hidden = false; state = "play"; startHole();
-  SDK.gameplayStart(); SDK.event("round_start", { mode, daily });
+  SDK.gameplayStart(); SDK.event("round_start", { mode, daily, rival: mode === "bot" ? rival.id : "" });
 }
 let strokes = 0;
 function startHole(){
@@ -374,12 +391,14 @@ function startHole(){
   layout(); hud();
   $("bNo").textContent = "HOLE " + (holeIdx + 1); $("bName").textContent = h.name; $("bPar").textContent = "Par " + h.par + (players.length > 1 ? " · " + players[cur].name : "");
   const bn = $("banner"); bn.classList.remove("show"); void bn.offsetWidth; bn.classList.add("show");
+  bot = null;
+  if (players.length > 1) { const hp = players[cur]; $("hint").textContent = hp.bot ? hp.name + " is reading the green…" : mode === "bot" ? "Your putt. Drag back to aim, let go to putt." : hp.name + ": drag back to aim, let go to putt."; $("hint").style.opacity = 1; }
 }
 function putt(dx, dy, p){
   if (phase !== "aim") return;
   const L = Math.hypot(dx, dy) || 1, v = p * MAX_SPEED;
   ball.vx = dx / L * v; ball.vy = dy / L * v; strokes++; phase = "roll"; lastRest = { x: ball.x, y: ball.y }; shotPower = p;
-  Sound.putt(p); buzz(8); $("hint").style.opacity = 0; hud();
+  Sound.putt(p); if (!players[cur].bot) buzz(8); $("hint").style.opacity = 0; hud();
 }
 const fx = (kind, a, b) => {
   if (kind === "rail") { Sound.rail(a); if (a > 250) buzz(5); }
@@ -392,6 +411,7 @@ function burst(x, y, n, col){ for (let i = 0; i < n; i++) { const a = Math.rando
 function update(dt){
   if (state !== "play") return;
   time += dt;
+  if (phase === "aim" && botTurn()) botTick(dt);
   if (phase === "roll") {
     let t = dt; while (t > 0) { const h = Math.min(t, 1 / 240); t -= h;
       const ev = step(sim, ball, time, h, fx);
@@ -445,7 +465,13 @@ function finish(){
     SDK.levelEnd(daily ? "daily" : "course", "done", t); }
   store();
   const emo = (n, p) => n === 1 ? "⛳" : n < p ? "🟢" : n === p ? "⚪" : n === p + 1 ? "🟠" : "🔴";
-  if (mode === "duo") {
+  if (mode === "bot") {
+    const [a, b] = players, ta = tot(a), tb = tot(b), won = ta < tb, unl = won ? beatRival(rival) : "";
+    $("overSub").textContent = "You vs " + rival.name + " · par " + par; $("overScore").textContent = ta + " – " + tb;
+    $("overTitle").textContent = (ta === tb ? "All square!" : won ? "You beat " + rival.name + "!" : rival.name + " wins this time") + (unl ? " · " + unl : "");
+    if (won) { SDK.happytime(); Sound.fanfare(5); }
+    shareTxt = "Putt Cove mini golf: " + (won ? "I beat " + rival.name + " " : ta === tb ? "All square with " + rival.name + " " : rival.name + " beat me ") + ta + " – " + tb + " ⛳";
+  } else if (mode === "duo") {
     const [a, b] = players, ta = tot(a), tb = tot(b), w = ta === tb ? null : ta < tb ? a : b;
     $("overSub").textContent = "2 players · par " + par; $("overScore").textContent = ta + " – " + tb; $("overTitle").textContent = w ? w.name + " wins!" : "All square!";
     shareTxt = "Putt Cove mini golf: " + ta + " – " + tb + (w ? ", " + w.name + " wins" : ", all square") + " ⛳";
@@ -457,7 +483,7 @@ function finish(){
   }
   const cls = (n, p) => n === 1 ? "a" : n < p ? "u" : n > p ? "o" : "";
   let tbl = "<table><tr><th>Hole</th>" + COURSE.map((_, i) => "<th>" + (i + 1) + "</th>").join("") + "<th>Tot</th></tr><tr><td>Par</td>" + COURSE.map(h => "<td>" + h.par + "</td>").join("") + "<td class='tot'>" + par + "</td></tr>";
-  for (const p of players) tbl += "<tr><td>" + (players.length > 1 ? p.name.replace("Player ", "P") : "You") + "</td>" + p.scores.map((n, i) => "<td><span class='" + cls(n, COURSE[i].par) + "'>&nbsp;" + n + "&nbsp;</span></td>").join("") + "<td class='tot'>" + tot(p) + "</td></tr>";
+  for (const p of players) tbl += "<tr><td>" + (players.length > 1 ? p.name.replace("Player ", "P").replace("The ", "") : "You") + "</td>" + p.scores.map((n, i) => "<td><span class='" + cls(n, COURSE[i].par) + "'>&nbsp;" + n + "&nbsp;</span></td>").join("") + "<td class='tot'>" + tot(p) + "</td></tr>";
   $("scorecard").innerHTML = tbl + "</table>";
   $("hud").hidden = true; $("who").hidden = true; show("over");
 }
@@ -605,7 +631,7 @@ function render(dt){
 /* ---------------- input ---------------- */
 let drag = null;
 const MAXDRAG = () => Math.min(VW, VH) * .32;
-cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play" || phase !== "aim") return; drag = { x: e.clientX, y: e.clientY }; aim = { dx: 0, dy: -1, p: 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play" || phase !== "aim" || botTurn()) return; drag = { x: e.clientX, y: e.clientY }; aim = { dx: 0, dy: -1, p: 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
 cv.addEventListener("pointermove", e => { if (!drag || phase !== "aim") return;
   const dx = drag.x - e.clientX, dy = drag.y - e.clientY, L = Math.hypot(dx, dy);
   if (L < 4) { aim.p = 0; return; } aim = { dx: dx / L, dy: dy / L, p: clamp(L / MAXDRAG(), 0, 1) }; });
@@ -616,12 +642,12 @@ addEventListener("keydown", e => {
   kDown[e.code] = true; Sound.init();
   if (e.code === "KeyP" || e.code === "Escape") state === "play" ? pause() : state === "pause" && resume();
   if (e.code === "KeyM") toggleSound();
-  if (e.code === "Space" && state === "play" && phase === "aim") { e.preventDefault(); putt(Math.cos(kAim.ang), Math.sin(kAim.ang), kAim.p); aim = null; }
+  if (e.code === "Space" && state === "play" && phase === "aim" && !botTurn()) { e.preventDefault(); putt(Math.cos(kAim.ang), Math.sin(kAim.ang), kAim.p); aim = null; }
   if (e.code.startsWith("Arrow")) e.preventDefault();
 });
 addEventListener("keyup", e => { kDown[e.code] = false; });
 function keyAim(dt){
-  if (state !== "play" || phase !== "aim" || drag) return;
+  if (state !== "play" || phase !== "aim" || drag || botTurn()) return;
   let used = false;
   if (kDown.ArrowLeft) { kAim.ang -= 1.6 * dt; used = true; } if (kDown.ArrowRight) { kAim.ang += 1.6 * dt; used = true; }
   if (kDown.ArrowUp) { kAim.p = clamp(kAim.p + .5 * dt, .05, 1); used = true; } if (kDown.ArrowDown) { kAim.p = clamp(kAim.p - .5 * dt, .05, 1); used = true; }
@@ -630,20 +656,107 @@ function keyAim(dt){
 addEventListener("blur", () => { kDown = {}; pause(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
 
+
+/* ---------------- rivals: shared picker ---------------- */
+function rivalUnlocked(i){ return i === 0 || !!(save.beaten || {})[RIVALS[i - 1].id]; }
+function buildRivals(){
+  const box = $("rivals"); if (!box) return; save.beaten = save.beaten || {};
+  box.innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function onRival(fn){ $("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; e.stopPropagation(); try { Sound.init(); } catch (_) {}
+  const i = +b.dataset.r; if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } fn(RIVALS[i]); }); }
+function beatRival(r){ save.beaten = save.beaten || {}; const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r);
+  return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const RIVALS = [
+  { id: "sunny", name: "Sunny", short: "Sunny", face: "S", color: "#46E0BE", blurb: "Putts hard, hopes", sa: .15, sp: .23, pick: 2 },
+  { id: "skipper", name: "Skipper", short: "Skipper", face: "K", color: "#FFA53D", blurb: "Reads every bank", sa: .105, sp: .165, pick: 1 },
+  { id: "ace", name: "The Ace", short: "Ace", face: "A", color: "#FF6B9A", blurb: "Rarely needs two", sa: .07, sp: .11, pick: 1 },
+];
+let rival = RIVALS[0], bot = null;
+
+/* ---------------- the computer player ----------------
+   It reads the hole like a player would: a walking-distance map to the cup (around walls, through portals,
+   avoiding water), then tries a fan of putts with the real physics and picks the one that ends closest.
+   Its skill decides how much its hands shake. */
+function buildField(h){
+  const C = 4, NX = Math.ceil(W / C), NY = Math.ceil(H / C), N = NX * NY, cost = new Float32Array(N), dist = new Float64Array(N).fill(1e9);
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const x = (i + .5) * C, y = (j + .5) * C;
+    let c = h.bounds.some(p => inPoly(x, y, p)) ? 1 : 0;
+    if (c && (h.blocks.some(p => inPoly(x, y, p)) || h.water.some(p => inPoly(x, y, p)))) c = 0;
+    if (c && h.sand.some(p => inPoly(x, y, p))) c = 3.5;
+    cost[j * NX + i] = c; }
+  const cell = (x, y) => clamp(Math.floor(y / C), 0, NY - 1) * NX + clamp(Math.floor(x / C), 0, NX - 1);
+  const heap = []; const push = (d, k) => { heap.push([d, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const c0 = cell(h.cup[0], h.cup[1]); dist[c0] = 0; push(0, c0);
+  const pa = h.portal ? cell(h.portal.a[0], h.portal.a[1]) : -1, pb = h.portal ? cell(h.portal.b[0], h.portal.b[1]) : -1;
+  while (heap.length) { const [d, k] = pop(); if (d > dist[k]) continue;
+    if (k === pb && d < dist[pa]) { dist[pa] = d; push(d, pa); }
+    const i = k % NX, j = (k / NX) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= NX || jj >= NY) continue;
+      const kk = jj * NX + ii; if (!cost[kk]) continue; const nd = d + (di && dj ? 1.414 : 1) * C * cost[kk]; if (nd < dist[kk]) { dist[kk] = nd; push(nd, kk); } } }
+  return (x, y) => { const k = cell(x, y); return dist[k] < 1e8 ? dist[k] : 2000; };
+}
+// expected strokes still to play from a resting spot
+const remain = d => 1 + Math.min(d, 1500) / 190;
+function evalPutt(field, x, y, a, p, t0, d0){
+  const b = { x, y, vx: Math.cos(a) * p * MAX_SPEED, vy: Math.sin(a) * p * MAX_SPEED }; let t = t0;
+  for (let k = 0; k < 240 * 7; k++) { const ev = step(sim, b, t, 1 / 240, null); t += 1 / 240;
+    if (ev === "cup") return 0;
+    if (ev === "water") return 2 + remain(d0);
+    if (ev === "out") return 1 + remain(d0);
+    if (ev === "rest") break; }
+  return remain(field(b.x, b.y));
+}
+// plans one putt; yields between simulations so the game never stutters while the computer thinks
+function* planPutt(field, x, y, t0, rv){
+  const d0 = field(x, y), res = [];
+  for (let pi = 0; pi < 10; pi++) for (let ai = 0; ai < 48; ai++) { const a = ai / 48 * Math.PI * 2, p = .07 + pi / 9 * .93; res.push({ a, p, s: evalPutt(field, x, y, a, p, t0, d0) }); yield; }
+  res.sort((q, w) => q.s - w.s);
+  for (const c of res.slice(0, 4)) for (let da = -2; da <= 2; da++) for (let dp = -2; dp <= 2; dp++) { const a = c.a + da * .025, p = clamp(c.p + dp * .03, .05, 1); res.push({ a, p, s: evalPutt(field, x, y, a, p, t0, d0) }); yield; }
+  res.sort((q, w) => q.s - w.s);
+  // a real player weighs the risk: replay the best lines with this rival's shaky hands
+  const top = res.slice(0, 12);
+  for (const c of top) { let sum = 0; for (let k = 0; k < 8; k++) { sum += evalPutt(field, x, y, c.a + gauss() * rv.sa, clamp(c.p * (1 + gauss() * rv.sp), .05, 1), t0, d0); yield; } c.r = sum / 8 + c.s * .05; }
+  top.sort((q, w) => q.r - w.r);
+  const pick = top[Math.floor(Math.random() * Math.min(rv.pick, top.length))];
+  return { a: pick.a + gauss() * rv.sa, p: clamp(pick.p * (1 + gauss() * rv.sp), .05, 1) };
+}
+function botTick(dt){
+  if (!bot) { if (!sim.field) sim.field = buildField(sim.hole); bot = { fireAt: time + 2, plan: null }; bot.gen = planPutt(sim.field, ball.x, ball.y, bot.fireAt, rival); }
+  if (!bot.plan) {
+    const until = performance.now() + 9;
+    while (performance.now() < until) { const r = bot.gen.next(); if (r.done) { bot.plan = r.value; break; } }
+    if (!bot.plan) return;
+    bot.plan.from = Math.atan2(COURSE[holeIdx].cup[1] - ball.y, COURSE[holeIdx].cup[0] - ball.x);
+    if (bot.fireAt < time + .75) bot.fireAt = time + .75;
+    return;
+  }
+  // wind up: turn toward the line and draw back
+  const k = clamp(1 - (bot.fireAt - time) / .75, 0, 1), e = k * k * (3 - 2 * k);
+  let d = bot.plan.a - bot.plan.from; d = Math.atan2(Math.sin(d), Math.cos(d));
+  const ang = bot.plan.from + d * e; aim = { dx: Math.cos(ang), dy: Math.sin(ang), p: bot.plan.p * e };
+  if (time >= bot.fireAt) { const pl = bot.plan; bot = null; aim = null; putt(Math.cos(pl.a), Math.sin(pl.a), pl.p); }
+}
+const botTurn = () => state === "play" && players[cur] && players[cur].bot;
+
 /* ---------------- menus ---------------- */
 function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
 function refreshMenu(){ const n = dayNo(), played = save.daily.day === n, r = save.bestRel, rel = v => v === 0 ? "E" : (v > 0 ? "+" : "−") + Math.abs(v);
   $("dailyName").textContent = "Daily course #" + n;
   $("dailySub").textContent = played ? "Today: " + save.daily.best + " (" + rel(save.daily.rel) + ")" + (save.streak.n > 1 && save.streak.last === n ? " · " + save.streak.n + "-day streak" : "") + " · play again" : "Same nine holes for everyone today";
-  $("sBest").textContent = r == null ? "–" : rel(r); $("sAces").textContent = save.aces; $("sRounds").textContent = save.rounds; }
-function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); drag = null; aim = null; show("pause"); }
+  $("sBest").textContent = r == null ? "–" : rel(r); buildRivals(); $("sAces").textContent = save.aces; $("sRounds").textContent = save.rounds; }
+function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); drag = null; if (!botTurn()) aim = null; show("pause"); }
 function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
 function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; $("who").hidden = true; refreshMenu(); show("menu"); }
 function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
 function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
 tap("soloBtn", () => startRound("solo")); tap("duoBtn", () => startRound("duo")); tap("dailyBtn", () => startRound("solo", true));
-tap("againBtn", () => startRound(mode, daily)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("againBtn", () => startRound(mode, daily, rival)); onRival(r => startRound("bot", false, r)); tap("menuBtn", toMenu); tap("shareBtn", share);
 tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => { show(null); state = "play"; players[cur].scores.length = holeIdx; startHole(); SDK.gameplayStart(); }); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
 
 let last = performance.now();
@@ -654,7 +767,7 @@ requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 /* course checker used during development: finds a route for every hole */
 if (/[?&]debug=1/.test(location.search)) window.__pc = {
-  get COURSE(){ return COURSE; }, POOL, norm, mirror, buildCourse, ballPos: () => ({ x: ball.x, y: ball.y }), info: () => ({ state, phase, holeIdx, strokes, cur, scores: players.map(p => p.scores) }),
+  get COURSE(){ return COURSE; }, startRound, RIVALS, allBots(){ players.forEach(p => p.bot = true); }, setCourse(list){ COURSE.splice(0, COURSE.length, ...list); holeIdx = 0; cur = 0; players.forEach(p => p.scores = []); startHole(); }, POOL, norm, mirror, buildCourse, ballPos: () => ({ x: ball.x, y: ball.y }), info: () => ({ state, phase, holeIdx, strokes, cur, scores: players.map(p => p.scores) }),
   putt: (a, p) => putt(Math.cos(a), Math.sin(a), p),
   goto: i => { holeIdx = i; startHole(); },
   shot(i, x, y, a, p, t0){ const s = makeSim(COURSE[i]), b = { x, y, vx: Math.cos(a) * p * MAX_SPEED, vy: Math.sin(a) * p * MAX_SPEED }; let t = t0 || 0;
