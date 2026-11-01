@@ -313,6 +313,125 @@
     "featured": 2
   },
   {
+    "slug": "cup-clash",
+    "title": "Cup Clash",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#E8483F",
+    "tagline": "Flick the ball into your rival's cups. Clear the rack first.",
+    "summary": "Swipe to flick a ping pong ball across the table into ten cups. Sink both throws for the balls back, clear your rival's rack first to win. Play the computer, a friend on one phone, or clear the rack in as few throws as you can.",
+    "about": [
+      "Swipe up to throw: a longer swipe throws farther, and a swipe to the side sends it left or right. Your last throw stays on the table as a faint trail, so you can adjust the next one. Hit the rim and the ball might bounce into the cup next door.",
+      "You get two balls a turn. Sink both and you get them back. Cups are re-racked into tighter shapes at six, three and one left. Biscuit throws with feeling, Skeeter has a steady arm and Sniper never misses twice.",
+      "Pass and play hands the phone over between turns with a ready screen, so nobody sees the other's swipe. Clear the rack is a solo challenge: sink all ten cups in as few throws as you can and beat your record."
+    ],
+    "features": [
+      "Swipe to throw with real ball physics and rim bounces",
+      "Balls back, re-racks at 6, 3 and 1",
+      "Three computer rivals to unlock",
+      "Pass and play, and a solo clear-the-rack challenge"
+    ],
+    "controls": [
+      [
+        "Throw",
+        "Drag up with the mouse, release",
+        "Swipe up, release"
+      ],
+      [
+        "Aim left or right",
+        "Drag to the side",
+        "Swipe to the side"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Party sports",
+      "A round": "Two to three minutes",
+      "Players": "1, 2 on one phone, or vs the computer",
+      "Progress": "Wins, record and unlocked rivals saved in this browser"
+    },
+    "keywords": "cup pong, ping pong toss, cup game, flick game, 2 player party game, free online game",
+    "touchOrientation": "portrait",
+    "categories": [
+      "sports",
+      "two-player",
+      "casual"
+    ],
+    "tags": [
+      "Party game",
+      "Physics",
+      "Swipe",
+      "Vs computer",
+      "Play with friends"
+    ],
+    "added": "2026-11-01",
+    "featured": 0
+  },
+  {
+    "slug": "color-claim",
+    "title": "Color Claim",
+    "source": "local",
+    "entry": "index.html",
+    "accent": "#A77BFF",
+    "tagline": "Pick a colour, swallow the board. Own more than half to win.",
+    "summary": "A quick strategy duel on a grid of colours. Each turn you pick a colour and your land swallows every touching tile of it. Own more than half the board to win, against the computer or a friend face to face.",
+    "about": [
+      "You start in one corner and your rival in the other. On your turn, pick a colour: your whole land turns that colour and grabs every tile of it that touches your border, chain after chain. You can never pick your own colour or your rival's, so every move also decides what they cannot take next.",
+      "Own 41 of the 80 tiles and the board is yours. Smudge picks what looks nice, Swatch grabs the biggest bite and Chroma thinks four moves ahead. Beat one to unlock the next.",
+      "Face to face puts two players on opposite ends of one phone, each with their own colour buttons. The daily flood is a solo puzzle: fill the whole board from one corner in par or fewer moves, the same board for everyone that day. Every colour also has its own shape, so it works for colourblind players."
+    ],
+    "features": [
+      "Two-minute strategy duels",
+      "Three computer rivals, from casual to four moves ahead",
+      "Face to face on one phone",
+      "Daily flood puzzle with par, streak and shareable result"
+    ],
+    "controls": [
+      [
+        "Pick a colour",
+        "Click a colour button or a tile, or press 1–6",
+        "Tap a colour button or a tile"
+      ],
+      [
+        "Pause",
+        "P or Esc",
+        "Pause button"
+      ],
+      [
+        "Sound on or off",
+        "M",
+        "Sound button"
+      ]
+    ],
+    "facts": {
+      "Genre": "Strategy duel",
+      "A round": "About two minutes",
+      "Players": "1, 2 on one phone, or vs the computer",
+      "Progress": "Wins, unlocked rivals and daily streak saved in this browser"
+    },
+    "keywords": "flood it, color flood, filler game, territory game, 2 player strategy game, daily puzzle, free online game",
+    "touchOrientation": "portrait",
+    "categories": [
+      "strategy",
+      "puzzle",
+      "two-player"
+    ],
+    "tags": [
+      "Strategy",
+      "Colours",
+      "Daily puzzle",
+      "Vs computer",
+      "Play with friends",
+      "Colourblind friendly"
+    ],
+    "added": "2026-11-01",
+    "featured": 0
+  },
+  {
     "slug": "axe-spin",
     "title": "Axe Spin",
     "source": "local",

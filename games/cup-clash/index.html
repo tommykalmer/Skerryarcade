@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Cup Clash: flick the ball, sink every cup</title>
+<meta name="description" content="Flick a ping pong ball into your rival's cups. Sink both throws for balls back, clear the rack first to win. Play the computer, a friend on one phone, or chase the fewest-throws record.">
+<meta name="theme-color" content="#14183A">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700;800&display=swap">
+<script src="/assets/skerry-sdk.js"></script>
+<style>
+  :root{
+    --ink:#14183A; --panel:rgba(22,26,60,.86); --line:rgba(210,220,255,.16);
+    --text:#F6F7FF; --muted:#AEB5DA; --sun:#FFD23F; --sun-ink:#231A00; --mint:#46E0BE; --red:#E8414B;
+    --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+    --f-body:"Familjen Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--text);font:500 16px/1.4 var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  [hidden]{display:none!important}
+
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;gap:8px;align-items:flex-start;z-index:2;pointer-events:none;
+    padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+  .hud > *{pointer-events:auto}
+  .side{display:grid;gap:4px;padding:8px 11px;border-radius:16px;background:var(--panel);border:1px solid var(--line);min-width:96px;transition:box-shadow .2s,opacity .2s}
+  .side small{font:700 .64rem/1 var(--f-display);letter-spacing:.08em;color:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
+  .side .rk{display:flex;gap:3px;flex-wrap:wrap;max-width:110px}
+  .side .rk i{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+  .side .rk i.gone{background:rgba(255,255,255,.12);box-shadow:none}
+  .side.on{box-shadow:0 0 0 2px var(--c)}
+  .side.off{opacity:.6}
+  .mid{flex:1;display:grid;justify-items:center;gap:4px;padding-top:4px}
+  .balls{display:flex;gap:6px}
+  .balls i{width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:inset -2px -3px 0 rgba(0,0,0,.15)}
+  .balls i.used{background:rgba(255,255,255,.18);box-shadow:none}
+  .who{font:700 .72rem/1.1 var(--f-display);text-align:center;color:var(--muted)}
+  .ibtns{display:grid;gap:6px}
+  .ibtn{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .ibtn svg{width:18px;height:18px}
+  .hint{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));text-align:center;font:600 .92rem/1.25 var(--f-body);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none;transition:opacity .4s;z-index:2;padding:0 20px}
+  .pop{position:fixed;left:50%;top:36%;transform:translate(-50%,-50%);font:800 clamp(2rem,10vw,3.4rem)/1 var(--f-display);color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.55);opacity:0;pointer-events:none;z-index:4;white-space:nowrap}
+  .pop.show{animation:popin 1.4s cubic-bezier(.3,1.6,.5,1) forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}30%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+
+  .screen{position:fixed;inset:0;display:flex;overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(100% 60% at 50% 10%,rgba(255,120,90,.18),transparent 60%),rgba(10,12,32,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:5}
+  .card{margin:auto;width:min(420px,100%);display:grid;gap:13px;justify-items:center;text-align:center;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+  .logo{margin:0;font:800 clamp(2.6rem,13vw,3.8rem)/.9 var(--f-display);letter-spacing:-.03em;color:#fff;text-shadow:0 5px 0 #A3222B,0 14px 34px rgba(232,65,75,.45)}
+  .logo span{display:block;font-size:.34em;letter-spacing:.34em;margin-top:.75em;color:var(--sun);text-shadow:none}
+  .lead{margin:0;color:#E2E5FA;max-width:31ch}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+  .stat{background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:14px;padding:10px 6px;display:grid;gap:2px}
+  .stat b{font:800 1.12rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+  .stat small{font-size:.72rem;color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;border-radius:18px;font:800 .98rem/1 var(--f-display);transition:transform .12s,box-shadow .12s}
+  .btn svg{width:18px;height:18px}
+  .btn.sun{background:var(--sun);color:var(--sun-ink);box-shadow:0 6px 0 #C89A00,0 14px 30px -8px rgba(255,210,63,.55)}
+  .btn.sun:active{transform:translateY(4px);box-shadow:0 2px 0 #C89A00}
+  .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.solo{height:auto;min-height:58px;padding:9px 14px;background:linear-gradient(135deg,#E8414B,#FF9F43);color:#fff;box-shadow:0 5px 0 #9C2530}
+  .btn.solo:active{transform:translateY(3px);box-shadow:0 2px 0 #9C2530}
+  .btn.solo span{display:grid;gap:3px}
+  .btn.solo b{font:800 .95rem/1 var(--f-display)}
+  .btn.solo small{font:600 .74rem/1.1 var(--f-body);opacity:.92}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+  .big{font:800 clamp(2.2rem,11vw,3.2rem)/1.02 var(--f-display);margin:0}
+  .kicker{font:700 .76rem/1 var(--f-display);letter-spacing:.2em;color:var(--muted);margin:0}
+  .note{font-size:.8rem;color:var(--muted);margin:0}
+  .result{font:800 1.4rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+  .unlock{font:700 .85rem/1.3 var(--f-body);background:linear-gradient(90deg,rgba(70,224,190,.22),rgba(255,210,63,.22));border:1px solid var(--line);padding:10px 14px;border-radius:14px;width:100%}
+  .handcup{width:84px;height:84px}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (max-height:680px){.lead{display:none}.card{gap:9px}.logo{font-size:2.3rem}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Cup Clash table"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="side" id="sideA" style="--c:#FFD23F"><small id="nameA">YOU</small><div class="rk" id="rkA"></div></div>
+  <div class="mid"><div class="balls" id="balls"><i></i><i></i></div><div class="who" id="who"></div></div>
+  <div class="side" id="sideB" style="--c:#46E0BE"><small id="nameB">RIVAL</small><div class="rk" id="rkB"></div></div>
+  <div class="ibtns">
+    <button class="ibtn" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
+    <button class="ibtn" id="soundBtn" aria-label="Sound on or off"></button>
+  </div>
+</div>
+<div class="hint" id="hint" hidden>Swipe up to throw. A longer swipe throws farther</div>
+<div class="pop" id="pop"></div>
+
+<div class="screen" id="menu">
+  <div class="card">
+    <h1 class="logo">CUP<br>CLASH<span>FLICK · SINK · WIN</span></h1>
+    <p class="lead">Flick the ball into your rival's cups. Sink both throws and you get the balls back. Clear the rack first to win.</p>
+    <div class="stats">
+      <div class="stat"><b id="sWins">0</b><small>Wins</small></div>
+      <div class="stat"><b id="sSunk">0</b><small>Cups sunk</small></div>
+      <div class="stat"><b id="sBest">–</b><small>Fewest throws</small></div>
+    </div>
+    <button class="btn sun" id="playBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span id="playLbl">Play</span></button>
+    <button class="btn solo" id="soloBtn"><span><b>Clear the rack</b><small id="soloSub">Sink all 10 cups in as few throws as you can</small></span></button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, pass the phone</button>
+    </div>
+    <p class="note">Swipe up to throw. Left or right to aim.</p>
+  </div>
+</div>
+
+<div class="screen" id="hand" hidden>
+  <div class="card">
+    <svg class="handcup" viewBox="0 0 64 64"><path d="M14 14h36l-5 42H19z" fill="#E8414B"/><path d="M14 14h36l-.7 6H14.7z" fill="#fff"/><ellipse cx="32" cy="14" rx="18" ry="4" fill="#7E1720"/></svg>
+    <p class="kicker" id="handKick">PASS THE PHONE</p>
+    <h2 class="big" id="handName">Player 2</h2>
+    <p class="note" id="handSub">Your turn to throw</p>
+    <button class="btn sun" id="handBtn">I'm ready</button>
+  </div>
+</div>
+
+<div class="screen" id="over" hidden>
+  <div class="card">
+    <p class="kicker" id="overKick">GAME OVER</p>
+    <h2 class="big" id="overTitle">You win!</h2>
+    <div class="result" id="overScore"></div>
+    <p class="note" id="overSub"></p>
+    <div class="unlock" id="overUnlock" hidden></div>
+    <button class="btn sun" id="againBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/></svg><span id="againLbl">Rematch</span></button>
+    <div class="row2"><button class="btn ghost" id="shareBtn">Share</button><button class="btn ghost" id="menuBtn">Menu</button></div>
+  </div>
+</div>
+<div class="screen" id="pause" hidden>
+  <div class="card">
+    <h2 class="big">Paused</h2>
+    <button class="btn sun" id="resumeBtn">Resume</button>
+    <div class="row2"><button class="btn ghost" id="restartBtn">Restart</button><button class="btn ghost" id="quitBtn">Menu</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const SDK = window.SkerrySDK || { gameplayStart(){}, gameplayStop(){}, happytime(){}, levelEnd(){}, event(){},
+  save(k, v){ try { localStorage.setItem("cupclash." + k, JSON.stringify(v)); } catch (e) {} },
+  load(k, d){ try { const v = localStorage.getItem("cupclash." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } } };
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const SHARE_URL = "https://skerryarcade.com/cup-clash/";
+
+/* ---------------- the table ----------------
+   World units are centimetres. x across, y up, z away from the thrower. The racks sit at the far end. */
+const TW = 30, TL = 180, CUP_R = 5.2, CUP_RB = 3.6, CUP_H = 13, BALL_R = 2.1, G = 981;
+const HAND = { x: 0, y: 30, z: 6 }, VY0 = 260;
+const SP = CUP_R * 2 + .4, ROW = SP * Math.sin(Math.PI / 3), BACK = TL - 8;
+// rack shapes by how many cups are left (re-racked automatically at 6, 3 and 1)
+function rackShape(n){
+  const rows = n === 10 ? [4, 3, 2, 1] : n === 6 ? [3, 2, 1] : n === 3 ? [2, 1] : [1];
+  const out = []; rows.forEach((k, r) => { for (let i = 0; i < k; i++) out.push({ x: (i - (k - 1) / 2) * SP, z: BACK - r * ROW - CUP_R }); });
+  return out;
+}
+
+/* ---------------- saves ---------------- */
+let save = Object.assign({ wins: 0, sunk: 0, games: 0, best: 0, sound: true, beaten: {} }, SDK.load("save", {}));
+const store = () => SDK.save("save", save);
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+/* ---------------- audio ---------------- */
+const Sound = (() => {
+  let ctx = null, master = null;
+  function init(){ if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = save.sound ? .85 : 0; master.connect(ctx.destination); } catch (e) { ctx = null; } }
+  const ok = () => ctx && save.sound;
+  function tone(f, t, dur, type, vol, to){ const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }
+  function noise(t, dur, vol, f, type = "bandpass", q = 1){ const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = b; fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.connect(fl); fl.connect(g); g.connect(master); s.start(t); }
+  return { init,
+    setOn(on){ if (master) master.gain.setTargetAtTime(on ? .85 : 0, ctx.currentTime, .02); },
+    throw(){ if (!ok()) return; const t = ctx.currentTime; noise(t, .18, .12, 1400, "bandpass", .8); },
+    tock(v){ if (!ok()) return; const t = ctx.currentTime; tone(1900 + Math.random() * 300, t, .05, "sine", Math.min(.3, v)); tone(950, t, .04, "triangle", Math.min(.12, v / 2)); },
+    rim(){ if (!ok()) return; const t = ctx.currentTime; tone(620, t, .12, "triangle", .18, 520); noise(t, .06, .1, 2600); },
+    splash(){ if (!ok()) return; const t = ctx.currentTime; tone(420, t, .09, "sine", .3, 160); noise(t + .02, .35, .28, 900, "lowpass"); noise(t + .05, .2, .12, 3200); },
+    cheer(){ if (!ok()) return; const t = ctx.currentTime; [523, 659, 784, 1046].forEach((f, i) => tone(f, t + i * .08, .45, "triangle", .13)); noise(t, .8, .06, 1800, "bandpass", .5); },
+    lose(){ if (!ok()) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(f, t + i * .14, .4, "triangle", .13)); },
+    miss(){ if (!ok()) return; const t = ctx.currentTime; tone(260, t, .2, "sine", .1, 180); },
+    click(){ if (!ok()) return; tone(880, ctx.currentTime, .05, "triangle", .09); }
+  };
+})();
+const buzz = p => { try { if (save.sound && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) {} };
+
+/* ---------------- rivals ---------------- */
+const RIVALS = [
+  { id: "biscuit", name: "Biscuit", short: "Biscuit", face: "B", color: "#46E0BE", blurb: "Throws with feeling", sp: .07, sl: .2 },
+  { id: "skeeter", name: "Skeeter", short: "Skeeter", face: "K", color: "#FFA53D", blurb: "Steady arm", sp: .04, sl: .12 },
+  { id: "sniper", name: "Sniper", short: "Sniper", face: "S", color: "#FF6B9A", blurb: "Never misses twice", sp: .024, sl: .075 },
+];
+function rivalUnlocked(i){ return i === 0 || !!save.beaten[RIVALS[i - 1].id]; }
+function buildRivals(){
+  $("rivals").innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function beatRival(r){ const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r); return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+function nextRival(){ for (let i = 0; i < RIVALS.length; i++) if (rivalUnlocked(i) && !save.beaten[RIVALS[i].id]) return RIVALS[i]; return RIVALS[RIVALS.length - 1]; }
+
+/* ---------------- match state ----------------
+   racks[p] are player p's own cups. The shooter always throws at the other player's rack. */
+let mode = "bot", rival = RIVALS[0], players = [], racks = [[], []], shooter = 0, ballsLeft = 2, hitsThisTurn = 0, throwsTurn = 0;
+let state = "menu", phase = "aim", ball = null, ghost = [null, null], particles = [], time = 0, soloThrows = 0, reracked = [{}, {}], bounced = false;
+function newRack(){ return rackShape(10).map(c => ({ x: c.x, z: c.z, gone: false, fade: 0, tx: c.x, tz: c.z })); }
+function startGame(m, r){
+  mode = m; if (r) rival = r;
+  players = mode === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }]
+    : mode === "bot" ? [{ name: "You", color: "#FFD23F" }, { name: rival.name, color: rival.color, bot: true }] : [{ name: "You", color: "#FFD23F" }];
+  racks = [newRack(), newRack()]; reracked = [{}, {}]; shooter = 0; ballsLeft = 2; hitsThisTurn = 0; throwsTurn = 0; soloThrows = 0; ghost = [null, null]; particles = []; ball = null; phase = "aim";
+  state = "play"; show(null); $("hud").hidden = false; $("sideB").hidden = mode === "solo"; $("hint").hidden = false; $("hint").style.opacity = 1;
+  $("hint").textContent = "Swipe up to throw. A longer swipe throws farther";
+  hud(); SDK.gameplayStart(); SDK.event("round_start", { mode, rival: mode === "bot" ? rival.id : "" });
+  if (mode === "duo") handoff();
+}
+const target = () => racks[mode === "solo" ? 1 : 1 - shooter];
+const left = rk => rk.filter(c => !c.gone).length;
+const isBot = () => mode === "bot" && players[shooter].bot;
+
+/* ---------------- throwing ---------------- */
+function throwBall(p, lat){
+  if (phase !== "aim" || state !== "play") return;
+  const vz = 140 + 220 * p, vx = 60 * lat;
+  ball = { x: HAND.x, y: HAND.y, z: HAND.z, vx, vy: VY0, vz, t: 0, path: [], done: false, sunk: null, rest: 0 };
+  bounced = false; phase = "fly"; throwsTurn++; if (mode === "solo") soloThrows++;
+  Sound.throw(); if (!isBot()) buzz(8); $("hint").style.opacity = 0; ballsLeft--; hud();
+}
+function cupsAll(){ const rk = target(); return rk.filter(c => !c.gone); }
+function step(dt){
+  const b = ball; if (!b || b.done) return;
+  b.vy -= G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.t += dt;
+  if ((b.t * 60 | 0) !== b.pt) { b.pt = b.t * 60 | 0; b.path.push([b.x, b.y, b.z]); }
+  for (const c of cupsAll()) {
+    const dx = b.x - c.x, dz = b.z - c.z, d = Math.hypot(dx, dz);
+    // into the cup
+    if (b.vy < 0 && b.y <= CUP_H + BALL_R * .2 && b.y > CUP_H - 4 && d < CUP_R - BALL_R * .3) return sink(c);
+    // rim: bounce off the lip, sometimes into the next cup
+    const rd = Math.abs(d - CUP_R);
+    if (Math.abs(b.y - CUP_H) < BALL_R && rd < BALL_R) {
+      const nx = d ? dx / d : 0, nz = d ? dz / d : 1, side = d > CUP_R ? 1 : -1;
+      const ny = (b.y - CUP_H) / BALL_R, hx = nx * side * Math.sqrt(Math.max(0, 1 - ny * ny)), hz = nz * side * Math.sqrt(Math.max(0, 1 - ny * ny));
+      const vn = b.vx * hx + b.vy * ny + b.vz * hz;
+      if (vn < 0) { const e = 1.35 + Math.random() * .3; b.vx -= e * vn * hx; b.vy -= e * vn * ny; b.vz -= e * vn * hz; b.vx += (Math.random() - .5) * 30; b.vz *= .8; Sound.rim(); buzz(5); }
+      continue;
+    }
+    // the outside wall of the cup
+    const wr = lerp(CUP_RB, CUP_R, clamp(b.y / CUP_H, 0, 1));
+    if (b.y < CUP_H && d < wr + BALL_R && d > CUP_R - BALL_R * .3) { const nx = dx / (d || 1), nz = dz / (d || 1), vn = b.vx * nx + b.vz * nz;
+      b.x = c.x + nx * (wr + BALL_R); b.z = c.z + nz * (wr + BALL_R); if (vn < 0) { b.vx -= 1.5 * vn * nx; b.vz -= 1.5 * vn * nz; Sound.tock(.15); } }
+  }
+  // the table
+  if (b.y <= BALL_R && Math.abs(b.x) <= TW && b.z >= 0 && b.z <= TL) {
+    b.y = BALL_R; if (b.vy < -40) { Sound.tock(Math.min(.35, -b.vy / 900)); bounced = true; }
+    b.vy = -b.vy * .58; b.vx *= .9; b.vz *= .86;
+    if (Math.abs(b.vy) < 25) { b.vy = 0; b.rest += dt; }
+  }
+  if (b.y < -40 || b.z > TL + 60 || Math.abs(b.x) > TW + 60 || b.t > 4 || b.rest > .35 || (b.vz < 0 && b.z < 40)) miss();
+}
+function sink(c){
+  const b = ball; b.done = true; b.sunk = c; c.gone = true; c.fade = 0; c.sinkT = 0;
+  Sound.splash(); buzz([12, 30, 18]);
+  for (let i = 0; i < 26; i++) { const a = Math.random() * 6.28, s = 20 + Math.random() * 60; particles.push({ x: c.x, y: CUP_H, z: c.z, vx: Math.cos(a) * s * .5, vy: 80 + Math.random() * 120, vz: Math.sin(a) * s * .5, t: 0, life: .6 + Math.random() * .4 }); }
+  hitsThisTurn++; if (!isBot() || mode === "duo") save.sunk++;
+  if (mode !== "solo" && players[shooter].bot) {} else store();
+  popup(bounced ? "BOUNCE!" : ["SPLASH!", "NICE!", "SINK IT!", "CUP!"][Math.floor(Math.random() * 4)], players[shooter] ? players[shooter].color : "#fff");
+  endThrow(true);
+}
+function miss(){ const b = ball; if (!b || b.done) return; b.done = true; Sound.miss(); endThrow(false); }
+function endThrow(hit){
+  ghost[shooter] = ball.path.slice(); phase = "settle";
+  hud();
+  setTimeout(() => {
+    if (state !== "play") return;
+    ball = null;
+    const rk = target();
+    if (!left(rk)) return mode === "solo" ? finishSolo() : finishDuel(shooter);
+    rerack(rk, mode === "solo" ? 1 : 1 - shooter);
+    if (ballsLeft > 0) { phase = "aim"; hud(); return; }
+    // both balls in: balls back
+    if (hitsThisTurn >= 2 && mode !== "solo") { ballsLeft = 2; hitsThisTurn = 0; popup("BALLS BACK!", "#FFD23F"); Sound.cheer(); phase = "aim"; hud(); return; }
+    if (mode === "solo") { ballsLeft = 2; hitsThisTurn = 0; phase = "aim"; hud(); return; }
+    nextTurn();
+  }, hit ? 900 : 650);
+}
+function rerack(rk, owner){
+  const n = left(rk); if (![6, 3, 1].includes(n) || reracked[owner][n]) return;
+  reracked[owner][n] = true;
+  const pos = rackShape(n), alive = rk.filter(c => !c.gone);
+  alive.forEach((c, i) => { c.tx = pos[i].x; c.tz = pos[i].z; });
+  popup("RE-RACK", "#fff");
+}
+function nextTurn(){
+  shooter = 1 - shooter; ballsLeft = 2; hitsThisTurn = 0; throwsTurn = 0; phase = "aim"; hud();
+  if (mode === "duo") return handoff();
+  if (isBot()) { $("hint").textContent = rival.name + " is lining up a throw…"; $("hint").style.opacity = 1; }
+  else { $("hint").textContent = "Your turn. Swipe up to throw"; $("hint").style.opacity = 1; }
+}
+function handoff(){
+  phase = "hand"; const p = players[shooter];
+  $("handKick").textContent = throwsTurn || left(racks[0]) < 10 || left(racks[1]) < 10 ? "PASS THE PHONE" : "FIRST THROW";
+  $("handName").textContent = p.name; $("handName").style.color = p.color;
+  $("handSub").textContent = "Your cups left: " + left(racks[shooter]) + " · theirs: " + left(racks[1 - shooter]);
+  show("hand");
+}
+// the computer: works out the perfect throw for a cup, then its arm shakes
+function botThrow(){
+  const cups = cupsAll(); if (!cups.length) return;
+  // the middle of the rack is the safest aim, a lone cup is a lone cup
+  let tx = 0, tz = 0; cups.forEach(c => { tx += c.tx; tz += c.tz; }); tx /= cups.length; tz /= cups.length;
+  const near = cups.slice().sort((a, b) => Math.hypot(a.tx - tx, a.tz - tz) - Math.hypot(b.tx - tx, b.tz - tz))[0];
+  const tt = (VY0 + Math.sqrt(VY0 * VY0 + 2 * G * (HAND.y - CUP_H))) / G;
+  const vz = (near.tz - HAND.z) / tt, vx = (near.tx - HAND.x) / tt;
+  const p = (vz - 140) / 220 + gauss() * rival.sp, lat = vx / 60 + gauss() * rival.sl;
+  throwBall(clamp(p, 0, 1.3), clamp(lat, -1.5, 1.5));
+}
+
+/* ---------------- endings ---------------- */
+function finishDuel(w){
+  state = "over"; SDK.gameplayStop(); $("hint").hidden = true;
+  save.games++;
+  const tt = $("overTitle"); let unl = "";
+  if (mode === "bot") { const won = w === 0; tt.textContent = won ? "You win!" : rival.name + " wins"; if (won) { save.wins++; unl = beatRival(rival); Sound.cheer(); SDK.happytime(); } else Sound.lose(); }
+  else { tt.textContent = players[w].name + " wins!"; Sound.cheer(); if (save.sound) {} }
+  tt.style.color = players[w].color; store();
+  $("overKick").textContent = mode === "bot" ? "YOU VS " + rival.name.toUpperCase() : "PASS AND PLAY";
+  const cupsLeft = left(racks[w]);
+  $("overScore").textContent = cupsLeft + (cupsLeft === 1 ? " cup" : " cups") + " left standing";
+  $("overSub").textContent = cupsLeft >= 7 ? "A rout." : cupsLeft >= 4 ? "Clear win." : cupsLeft >= 2 ? "Close one." : "Down to the very last cup!";
+  const u = $("overUnlock"); u.hidden = !unl; u.textContent = unl; $("againLbl").textContent = "Rematch";
+  SDK.levelEnd(mode, "done", cupsLeft); SDK.event("match_end", { mode, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (w === 0 ? 1 : 0) : -1, cups_left: cupsLeft });
+  setTimeout(() => { $("hud").hidden = true; show("over"); }, 700);
+}
+function finishSolo(){
+  state = "over"; SDK.gameplayStop(); $("hint").hidden = true; save.games++;
+  const best = !save.best || soloThrows < save.best; if (best) save.best = soloThrows; store();
+  if (best) { Sound.cheer(); SDK.happytime(); } else Sound.cheer();
+  $("overKick").textContent = "CLEAR THE RACK"; const tt = $("overTitle"); tt.style.color = "#FFD23F";
+  tt.textContent = soloThrows <= 10 ? "Perfect rack!" : best ? "New record!" : "Rack cleared";
+  $("overScore").textContent = "10 cups in " + soloThrows + " throws";
+  $("overSub").textContent = "Accuracy " + Math.round(1000 / soloThrows) + "% · best " + save.best + " throws";
+  $("overUnlock").hidden = true; $("againLbl").textContent = "Go again";
+  SDK.levelEnd("solo", "done", soloThrows); SDK.event("solo_end", { throws: soloThrows });
+  setTimeout(() => { $("hud").hidden = true; show("over"); }, 700);
+}
+
+/* ---------------- HUD ---------------- */
+function rk(el, cups){ el.innerHTML = cups.map(c => '<i class="' + (c.gone ? "gone" : "") + '"></i>').join(""); }
+function hud(){
+  const a = players[0], b = players[1];
+  $("nameA").textContent = mode === "solo" ? "CUPS LEFT" : (a.name).toUpperCase(); $("sideA").style.setProperty("--c", a.color);
+  if (mode === "solo") { rk($("rkA"), racks[1]); $("sideA").className = "side on"; }
+  else { rk($("rkA"), racks[0]); rk($("rkB"), racks[1]); $("nameB").textContent = b.name.toUpperCase(); $("sideB").style.setProperty("--c", b.color);
+    $("sideA").className = "side " + (shooter === 0 ? "on" : "off"); $("sideB").className = "side " + (shooter === 1 ? "on" : "off"); }
+  $("balls").innerHTML = [0, 1].map(i => '<i class="' + (i < 2 - ballsLeft ? "used" : "") + '"></i>').join("");
+  const p = players[shooter];
+  $("who").textContent = mode === "solo" ? soloThrows + (soloThrows === 1 ? " throw" : " throws") : p.bot ? p.name + " throws" : mode === "bot" ? "Your throw" : p.name;
+  $("who").style.color = mode === "solo" ? "" : p.color;
+}
+
+/* ---------------- rendering ---------------- */
+const cv = $("game"), ctx = cv.getContext("2d");
+let DPR = 1, VW = 0, VH = 0, F = 1000, HY = 0, CX = 0;
+const CAM = { y: 92, z: -122 };
+function layout(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5); VW = innerWidth; VH = innerHeight;
+  cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
+  // fit the rack nicely in portrait and landscape: the far end of the table sits about a third down the screen
+  const H = Math.min(VH, VW * 2.05);
+  F = 1.7 * H; CX = VW / 2;
+  HY = VH * .34 - (CAM.y - CUP_H) * F / (BACK - CAM.z);
+  bakeBg();
+}
+function P(x, y, z){ const d = z - CAM.z; return [CX + x * F / d, HY + (CAM.y - y) * F / d, F / d]; }
+let bg = null;
+function bakeBg(){
+  bg = document.createElement("canvas"); bg.width = cv.width; bg.height = cv.height; const g = bg.getContext("2d"); g.scale(DPR, DPR);
+  const sky = g.createLinearGradient(0, 0, 0, VH); sky.addColorStop(0, "#1A1F4A"); sky.addColorStop(.45, "#3B2B5E"); sky.addColorStop(1, "#1A1530"); g.fillStyle = sky; g.fillRect(0, 0, VW, VH);
+  // a garden at dusk: tree line, hedges and string lights
+  const far = P(0, 0, TL + 120)[1];
+  g.fillStyle = "#151A33"; g.beginPath(); g.moveTo(0, far); for (let x = 0; x <= VW; x += 18) g.lineTo(x, far - 40 - Math.abs(Math.sin(x * .021) * 60 + Math.sin(x * .07) * 18)); g.lineTo(VW, VH); g.lineTo(0, VH); g.fill();
+  g.fillStyle = "#1E2A2E"; g.fillRect(0, far, VW, VH - far);
+  const lawn = g.createLinearGradient(0, far, 0, VH); lawn.addColorStop(0, "#21402F"); lawn.addColorStop(1, "#142A1F"); g.fillStyle = lawn; g.fillRect(0, far, VW, VH - far);
+  for (let k = 0; k < 2; k++) { const y0 = VH * (.06 + k * .09), sag = 40 + k * 20; g.strokeStyle = "rgba(0,0,0,.4)"; g.lineWidth = 1.5; g.beginPath();
+    for (let x = -10; x <= VW + 10; x += 6) { const t = x / VW; g.lineTo(x, y0 + Math.sin(t * Math.PI) * sag); } g.stroke();
+    for (let x = 14 + k * 20; x < VW; x += 42) { const t = x / VW, y = y0 + Math.sin(t * Math.PI) * sag + 6, hue = [42, 18, 340, 160, 200][(x / 42 | 0) % 5];
+      const gl = g.createRadialGradient(x, y, 0, x, y, 16); gl.addColorStop(0, "hsla(" + hue + ",100%,70%,.55)"); gl.addColorStop(1, "hsla(" + hue + ",100%,60%,0)"); g.fillStyle = gl; g.fillRect(x - 16, y - 16, 32, 32);
+      g.fillStyle = "hsl(" + hue + ",100%,82%)"; g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); } }
+  // the table
+  const c0 = P(-TW, 0, 0), c1 = P(TW, 0, 0), c2 = P(TW, 0, TL), c3 = P(-TW, 0, TL);
+  const leg = (x, z) => { const a = P(x, 0, z), b = P(x, -76, z); g.strokeStyle = "#0B0E1C"; g.lineWidth = Math.max(2, a[2] * 3); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); };
+  leg(-TW + 4, TL - 4); leg(TW - 4, TL - 4);
+  const ed = P(-TW, -3, TL), ed2 = P(TW, -3, TL); g.fillStyle = "#0E2B33"; g.beginPath(); g.moveTo(c3[0], c3[1]); g.lineTo(c2[0], c2[1]); g.lineTo(ed2[0], ed2[1]); g.lineTo(ed[0], ed[1]); g.fill();
+  const top = g.createLinearGradient(0, c3[1], 0, c0[1]); top.addColorStop(0, "#1D6A78"); top.addColorStop(1, "#2C9AA6");
+  g.fillStyle = top; g.beginPath(); g.moveTo(c0[0], c0[1]); g.lineTo(c1[0], c1[1]); g.lineTo(c2[0], c2[1]); g.lineTo(c3[0], c3[1]); g.closePath(); g.fill();
+  g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 2;
+  const m0 = P(0, 0, 0), m1 = P(0, 0, TL); g.beginPath(); g.moveTo(m0[0], m0[1]); g.lineTo(m1[0], m1[1]); g.stroke();
+  for (const s of [-1, 1]) { const a = P(s * (TW - 1.5), 0, 0), b = P(s * (TW - 1.5), 0, TL); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); }
+  const h0 = P(-TW, 0, TL / 2), h1 = P(TW, 0, TL / 2); g.strokeStyle = "rgba(255,255,255,.35)"; g.beginPath(); g.moveTo(h0[0], h0[1]); g.lineTo(h1[0], h1[1]); g.stroke();
+  // big star painted in the middle of the table
+  g.fillStyle = "rgba(255,210,63,.18)"; g.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 7 : 16, p = P(Math.cos(a) * r, 0, TL / 2 + Math.sin(a) * r); k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.fill();
+}
+function ell(x, y, rx, ry){ ctx.beginPath(); ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, 7); }
+function drawCup(c, sinkBall){
+  const k = c.gone ? clamp(1 - c.fade, 0, 1) : 1; if (k <= 0) return;
+  ctx.globalAlpha = k;
+  const top = P(c.x, CUP_H, c.z), bot = P(c.x, 0, c.z), rT = CUP_R * top[2], rB = CUP_RB * bot[2];
+  // the ellipses get flatter the farther away they are
+  const tilt = clamp((CAM.y - CUP_H) / (c.z - CAM.z), .05, .9), eT = rT * tilt, eB = rB * tilt;
+  ctx.fillStyle = "rgba(0,0,0,.3)"; ell(bot[0], bot[1] + 1, rB * 1.25, eB * 1.4); ctx.fill();
+  // inside
+  ctx.fillStyle = "#6E1018"; ell(top[0], top[1], rT, eT); ctx.fill();
+  ctx.fillStyle = c.gone ? "rgba(255,240,200,.0)" : "rgba(255,214,120,.55)"; ell(top[0], top[1] + eT * .35, rT * .78, eT * .55); ctx.fill();
+  if (sinkBall) drawBallAt(sinkBall.x, Math.max(CUP_H - 6, sinkBall.y), sinkBall.z, 1);
+  // body
+  const g = ctx.createLinearGradient(top[0] - rT, 0, top[0] + rT, 0); g.addColorStop(0, "#9E1E28"); g.addColorStop(.35, "#F0505A"); g.addColorStop(.6, "#E33B46"); g.addColorStop(1, "#86161F");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(top[0] - rT, top[1]); ctx.lineTo(bot[0] - rB, bot[1]); ctx.ellipse(bot[0], bot[1], rB, eB, 0, Math.PI, 0, true); ctx.lineTo(top[0] + rT, top[1]); ctx.ellipse(top[0], top[1], rT, eT, 0, 0, Math.PI, false); ctx.fill();
+  // white rim band
+  ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = Math.max(1, rT * .16); ctx.beginPath(); ctx.ellipse(top[0], top[1] + rT * .08, rT * .985, eT, 0, 0, Math.PI); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = Math.max(.8, rT * .08); ell(top[0], top[1], rT, eT); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function drawBallAt(x, y, z, a){
+  const p = P(x, y, z), r = BALL_R * p[2] * 1.15; ctx.globalAlpha = a;
+  const g = ctx.createRadialGradient(p[0] - r * .35, p[1] - r * .35, r * .1, p[0], p[1], r); g.addColorStop(0, "#FFFFFF"); g.addColorStop(1, "#E6E1D2");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+}
+function render(dt){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (bg) ctx.drawImage(bg, 0, 0, VW, VH);
+  if (!racks[0].length) return;
+  const rkT = target();
+  // last throw, faintly, to learn from
+  const gh = ghost[mode === "solo" ? 0 : shooter];
+  if (gh && phase === "aim" && !isBot()) { ctx.fillStyle = "rgba(255,255,255,.35)"; for (let i = 0; i < gh.length; i += 2) { const p = P(gh[i][0], gh[i][1], gh[i][2]); ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(1, p[2] * .5), 0, 7); ctx.fill(); } }
+  // cups far to near, the ball slotted in at its depth
+  for (const c of rkT) { c.x = lerp(c.x, c.tx, Math.min(1, dt * 5)); c.z = lerp(c.z, c.tz, Math.min(1, dt * 5)); if (c.gone) c.fade += dt * 1.3; }
+  const items = rkT.filter(c => !c.gone || c.fade < 1).map(c => ({ z: c.z, cup: c }));
+  if (ball && !ball.sunk) items.push({ z: ball.z - .01, ball: true });
+  items.sort((a, b) => b.z - a.z);
+  if (ball && !ball.sunk && ball.y > 0) { const s = P(ball.x, 0, ball.z); if (Math.abs(ball.x) < TW && ball.z < TL) { ctx.fillStyle = "rgba(0,0,0," + clamp(.35 - ball.y / 300, .05, .35) + ")"; ell(s[0], s[1], BALL_R * s[2] * 1.2, BALL_R * s[2] * .4); ctx.fill(); } }
+  for (const it of items) {
+    if (it.cup) { const sb = ball && ball.sunk === it.cup ? { x: it.cup.x + (ball.x - it.cup.x) * .3, y: CUP_H - Math.min(6, (ball.sinkT || 0) * 30), z: it.cup.z } : null; drawCup(it.cup, sb); }
+    else drawBallAt(ball.x, ball.y, ball.z, 1);
+  }
+  if (ball && ball.sunk) ball.sinkT = (ball.sinkT || 0) + dt;
+  // the ball in hand, and your swipe
+  if (state === "play" && phase === "aim") {
+    const off = swipe ? { x: (swipe.x - swipe.x0) * .15, y: (swipe.y - swipe.y0) * .15 } : { x: 0, y: Math.sin(time * 3) * 2 };
+    const p = P(HAND.x, HAND.y, HAND.z), r = BALL_R * p[2] * 1.15;
+    ctx.fillStyle = "rgba(0,0,0,.25)"; ell(p[0] + off.x, p[1] + r * 2.3, r * .9, r * .3); ctx.fill();
+    const g = ctx.createRadialGradient(p[0] + off.x - r * .35, p[1] + off.y - r * .35, r * .1, p[0] + off.x, p[1] + off.y, r); g.addColorStop(0, "#FFFFFF"); g.addColorStop(1, "#E2DCCB");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p[0] + off.x, p[1] + off.y, r, 0, 7); ctx.fill();
+    if (swipe && !isBot()) { const dy = swipe.y0 - swipe.y, pw = clamp(dy / (VH * .42), 0, 1.25);
+      ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(swipe.x0, swipe.y0); ctx.lineTo(swipe.x, swipe.y); ctx.stroke();
+      ctx.fillStyle = "hsl(" + (130 - pw * 100) + ",90%,60%)"; ctx.beginPath(); ctx.arc(swipe.x, swipe.y, 7, 0, 7); ctx.fill(); }
+  }
+  // splashes
+  for (let i = particles.length - 1; i >= 0; i--) { const q = particles[i]; q.t += dt; if (q.t > q.life) { particles.splice(i, 1); continue; }
+    q.vy -= G * .5 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; const p = P(q.x, q.y, q.z);
+    ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = "#FFE6A0"; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(1, p[2] * .45), 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- input ---------------- */
+let swipe = null;
+cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play" || phase !== "aim" || isBot()) return; swipe = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+cv.addEventListener("pointermove", e => { if (!swipe) return; swipe.x = e.clientX; swipe.y = e.clientY; });
+cv.addEventListener("pointerup", e => { if (!swipe) return; const s = swipe; swipe = null; s.x = e.clientX; s.y = e.clientY;
+  const dy = s.y0 - s.y, dx = s.x - s.x0; if (dy < 28) { if (dy > -10 && Math.abs(dx) < 20) { $("hint").textContent = "Swipe up to throw. A longer swipe throws farther"; $("hint").style.opacity = 1; } return; }
+  throwBall(clamp(dy / (VH * .42), 0, 1.25), clamp(dx / (VW * .45), -1.4, 1.4)); });
+cv.addEventListener("pointercancel", () => { swipe = null; });
+addEventListener("keydown", e => { Sound.init();
+  if (e.code === "KeyP" || e.code === "Escape") state === "play" ? pause() : state === "pause" && resume();
+  if (e.code === "KeyM") toggleSound(); });
+
+/* ---------------- loop ---------------- */
+function update(dt){
+  if (state !== "play") return;
+  time += dt;
+  if (phase === "fly" && ball) { let t = dt; while (t > 0 && ball && !ball.done) { const h = Math.min(t, 1 / 480); step(h); t -= h; } }
+  if (phase === "aim" && isBot()) { botWait += dt; if (botWait > 1.1) { botWait = 0; botThrow(); } } else botWait = 0;
+}
+let botWait = 0, last = performance.now();
+function frame(now){ const dt = Math.min(.04, (now - last) / 1000); last = now; update(dt); render(state === "pause" ? 0 : dt); requestAnimationFrame(frame); }
+
+/* ---------------- screens ---------------- */
+function show(id){ for (const s of ["menu", "over", "pause", "hand"]) $(s).hidden = s !== id; }
+function popup(text, col){ const p = $("pop"); p.textContent = text; p.style.color = col || "#fff"; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show"); }
+let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2400); }
+function refreshMenu(){
+  buildRivals(); $("sWins").textContent = save.wins; $("sSunk").textContent = save.sunk; $("sBest").textContent = save.best || "–";
+  $("playLbl").textContent = "Play " + nextRival().name;
+  $("soloSub").textContent = save.best ? "Your record: 10 cups in " + save.best + " throws" : "Sink all 10 cups in as few throws as you can";
+  mode = "solo"; players = [{ name: "You", color: "#FFD23F" }]; racks = [newRack(), newRack()]; shooter = 0; phase = "menu";
+}
+function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; ball = null; $("hud").hidden = true; $("hint").hidden = true; refreshMenu(); show("menu"); }
+function pause(){ if (state !== "play" || phase === "hand") return; state = "pause"; SDK.gameplayStop(); swipe = null; show("pause"); }
+function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); last = performance.now(); }
+async function share(){
+  let text;
+  if (mode === "solo") text = "Cup Clash 🏓🥤 I cleared all 10 cups in " + soloThrows + " throws. Beat that?\n" + SHARE_URL;
+  else if (mode === "bot") text = "Cup Clash 🏓🥤 " + ($("overTitle").textContent === "You win!" ? "I beat " + rival.name : rival.name + " beat me") + " with " + $("overScore").textContent + ". Your turn?\n" + SHARE_URL;
+  else text = "Cup Clash 🏓🥤 " + $("overTitle").textContent + " " + $("overScore").textContent + "\n" + SHARE_URL;
+  SDK.event("share", { mode });
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Copied. Paste it to a friend"); } catch (e) { toast(text); }
+}
+function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
+function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
+const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
+tap("playBtn", () => startGame("bot", nextRival())); tap("soloBtn", () => startGame("solo")); tap("duoBtn", () => startGame("duo"));
+tap("againBtn", () => startGame(mode, rival)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => startGame(mode, rival)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
+tap("handBtn", () => { show(null); phase = "aim"; hud(); $("hint").textContent = players[shooter].name + ": swipe up to throw"; $("hint").style.opacity = 1; });
+$("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; Sound.init(); const i = +b.dataset.r;
+  if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } startGame("bot", RIVALS[i]); });
+addEventListener("resize", layout);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+layout(); soundIcon(); toMenu();
+requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+if (/[?&]debug=1/.test(location.search)) window.__cup = { RIVALS, startGame, throwBall, get state(){ return state; }, get phase(){ return phase; }, get shooter(){ return shooter; },
+  get racks(){ return racks.map(left); }, get solo(){ return soloThrows; },
+  // the throw that would land dead centre in a cup (for testing)
+  aimAt(i){ const c = target().filter(c => !c.gone)[i || 0]; if (!c) return null; const tt = (VY0 + Math.sqrt(VY0 * VY0 + 2 * G * (HAND.y - CUP_H))) / G; return [((c.tz - HAND.z) / tt - 140) / 220, (c.tx - HAND.x) / tt / 60]; } };
+})();
+</script>
+</body>
+</html>

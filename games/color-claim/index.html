@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Color Claim: take over the board one colour at a time</title>
+<meta name="description" content="Pick a colour and swallow every tile of it next to your land. Own more than half the board to win. Play the computer, a friend face to face, or the daily flood puzzle.">
+<meta name="theme-color" content="#141A33">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700;800&display=swap">
+<script src="/assets/skerry-sdk.js"></script>
+<style>
+  :root{
+    --ink:#141A33; --panel:rgba(28,34,66,.9); --line:rgba(210,220,255,.16);
+    --text:#F5F7FF; --muted:#A7B0D6; --sun:#FFD23F; --sun-ink:#231A00; --mint:#46E0BE;
+    --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+    --f-body:"Familjen Grotesk","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--text);font:500 16px/1.4 var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  [hidden]{display:none!important}
+
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;z-index:2;
+    padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+  .sc{flex:1;display:grid;gap:6px;min-width:0}
+  .names{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+  .pl{display:flex;align-items:center;gap:7px;min-width:0;font:700 .78rem/1 var(--f-display);transition:opacity .2s}
+  .pl.r{flex-direction:row-reverse;text-align:right}
+  .pl b{font:800 1.35rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+  .pl span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30vw}
+  .pl i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+  .pl.on i{box-shadow:0 0 0 3px #fff,0 0 14px var(--c);animation:beat 1s ease-in-out infinite}
+  .pl.off{opacity:.55}
+  @keyframes beat{50%{transform:scale(1.25)}}
+  .bar{position:relative;height:12px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}
+  .bar .a,.bar .b{position:absolute;top:0;bottom:0;transition:width .35s cubic-bezier(.3,1.2,.5,1)}
+  .bar .a{left:0;background:var(--ca,#FFD23F);border-radius:999px 0 0 999px}
+  .bar .b{right:0;background:var(--cb,#46E0BE);border-radius:0 999px 999px 0}
+  .bar .mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,.4)}
+  .goal{font:600 .7rem/1 var(--f-body);color:var(--muted);text-align:center}
+  .ibtns{display:flex;gap:6px}
+  .ibtn{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .ibtn svg{width:18px;height:18px}
+
+  .pal{position:fixed;left:0;right:0;display:flex;justify-content:center;gap:clamp(6px,2.4vw,12px);z-index:2;padding:0 10px;transition:opacity .25s}
+  .pal.bot{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .pal.top{top:calc(88px + env(safe-area-inset-top,0px));transform:rotate(180deg)}
+  .pal.idle{opacity:.28;pointer-events:none}
+  .sw{position:relative;width:clamp(44px,13vw,58px);height:clamp(44px,13vw,58px);border-radius:50%;background:var(--c);display:grid;place-items:center;
+    box-shadow:inset 0 -5px 0 rgba(0,0,0,.2),0 6px 16px -6px rgba(0,0,0,.5);transition:transform .12s,opacity .2s}
+  .sw:active{transform:scale(.9)}
+  .sw svg{width:42%;height:42%;color:rgba(0,0,0,.38)}
+  .sw[disabled]{opacity:.28;transform:scale(.82)}
+  .sw[disabled]::after{content:attr(data-tag);position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font:700 .56rem/1 var(--f-display);letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+  .sw .gain{position:absolute;top:-8px;right:-8px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;background:#fff;color:#1A1F3A;font:800 .66rem/22px var(--f-display);text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .moves{position:fixed;left:0;right:0;bottom:calc(92px + env(safe-area-inset-bottom,0px));text-align:center;font:700 .78rem/1 var(--f-display);color:var(--muted);pointer-events:none;z-index:2}
+  .pop{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);font:800 clamp(2rem,10vw,3.2rem)/1 var(--f-display);color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;z-index:4;white-space:nowrap}
+  .pop.show{animation:popin 1.3s cubic-bezier(.3,1.6,.5,1) forwards}
+  @keyframes popin{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}30%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+
+  .screen{position:fixed;inset:0;display:flex;overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+    background:radial-gradient(100% 60% at 50% 10%,rgba(167,123,255,.22),transparent 60%),rgba(12,16,34,.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:5}
+  .card{margin:auto;width:min(420px,100%);display:grid;gap:13px;justify-items:center;text-align:center;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+  .logo{margin:0;font:800 clamp(2.5rem,12.5vw,3.6rem)/.9 var(--f-display);letter-spacing:-.03em;color:#fff}
+  .logo em{font-style:normal;background:linear-gradient(90deg,#FF6B5A,#FFD23F,#46E0BE,#4FA8FF,#A77BFF);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo span{display:block;font-size:.34em;letter-spacing:.32em;margin-top:.75em;color:var(--sun)}
+  .lead{margin:0;color:#DDE3FA;max-width:31ch}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+  .stat{background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:14px;padding:10px 6px;display:grid;gap:2px}
+  .stat b{font:800 1.12rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+  .stat small{font-size:.72rem;color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;border-radius:18px;font:800 .98rem/1 var(--f-display);transition:transform .12s,box-shadow .12s}
+  .btn svg{width:18px;height:18px}
+  .btn.sun{background:var(--sun);color:var(--sun-ink);box-shadow:0 6px 0 #C89A00,0 14px 30px -8px rgba(255,210,63,.55)}
+  .btn.sun:active{transform:translateY(4px);box-shadow:0 2px 0 #C89A00}
+  .btn.daily{height:auto;min-height:58px;padding:9px 14px;background:linear-gradient(135deg,#FF6B5A,#A77BFF);color:#fff;box-shadow:0 5px 0 #6B3FC8}
+  .btn.daily:active{transform:translateY(3px);box-shadow:0 2px 0 #6B3FC8}
+  .btn.daily span{display:grid;gap:3px}
+  .btn.daily b{font:800 .95rem/1 var(--f-display)}
+  .btn.daily small{font:600 .74rem/1.1 var(--f-body);opacity:.9}
+  .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+  .big{font:800 clamp(2.2rem,11vw,3.2rem)/1.02 var(--f-display);margin:0}
+  .kicker{font:700 .76rem/1 var(--f-display);letter-spacing:.2em;color:var(--muted);margin:0}
+  .note{font-size:.8rem;color:var(--muted);margin:0}
+  .result{font:800 1.5rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+  .unlock{font:700 .85rem/1.3 var(--f-body);background:linear-gradient(90deg,rgba(70,224,190,.22),rgba(255,210,63,.22));border:1px solid var(--line);padding:10px 14px;border-radius:14px;width:100%}
+  .trail{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:100%}
+  .trail i{width:14px;height:14px;border-radius:4px;background:var(--c)}
+
+  .vs{width:100%;display:grid;gap:8px}
+  .vs .vlabel{font:700 .7rem/1 var(--f-display);letter-spacing:.16em;color:var(--muted);text-align:left;margin:4px 0 0}
+  .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rival{position:relative;display:grid;gap:4px;justify-items:center;padding:10px 6px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);transition:transform .12s}
+  .rival:active{transform:scale(.96)}
+  .rival .face{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-display);color:#1E1400;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+  .rival b{font:700 .78rem/1.1 var(--f-display)}
+  .rival small{font-size:.68rem;color:var(--muted);line-height:1.2}
+  .rival.locked{opacity:.45}
+  .rival .star{position:absolute;top:5px;right:8px;color:var(--sun);font-size:.85rem}
+  .btn.duo2{background:rgba(255,255,255,.08);border:1px solid var(--line);height:50px;font-size:.88rem}
+  .btn.duo2 svg{width:20px;height:20px}
+  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;background:var(--text);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;z-index:9;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (max-height:680px){.lead{display:none}.card{gap:9px}.logo{font-size:2.2rem}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Color Claim board"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="sc">
+    <div class="names">
+      <div class="pl" id="plA" style="--c:#FFD23F"><i></i><span id="nA">You</span><b id="vA">1</b></div>
+      <div class="pl r" id="plB" style="--c:#46E0BE"><i></i><span id="nB">Rival</span><b id="vB">1</b></div>
+    </div>
+    <div class="bar" id="bar"><div class="a" id="barA"></div><div class="b" id="barB"></div><div class="mid"></div></div>
+    <div class="goal" id="goal">Own 41 tiles to win</div>
+  </div>
+  <div class="ibtns">
+    <button class="ibtn" id="soundBtn" aria-label="Sound on or off"></button>
+    <button class="ibtn" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
+  </div>
+</div>
+<div class="pal top" id="palB" hidden></div>
+<div class="pal bot" id="palA" hidden></div>
+<div class="moves" id="movesTxt" hidden></div>
+<div class="pop" id="pop"></div>
+
+<div class="screen" id="menu">
+  <div class="card">
+    <h1 class="logo"><em>COLOR</em><br>CLAIM<span>TAKE THE BOARD</span></h1>
+    <p class="lead">Pick a colour and swallow every tile of it next to your land. Own more than half the board to win.</p>
+    <div class="stats">
+      <div class="stat"><b id="sWins">0</b><small>Wins</small></div>
+      <div class="stat"><b id="sStreak">0</b><small>Daily streak</small></div>
+      <div class="stat"><b id="sDaily">–</b><small>Today's flood</small></div>
+    </div>
+    <button class="btn sun" id="playBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg><span id="playLbl">Play</span></button>
+    <button class="btn daily" id="dailyBtn"><span><b id="dailyName">Daily flood</b><small id="dailySub">Fill the whole board in par or less</small></span></button>
+    <div class="vs">
+      <p class="vlabel">VERSUS</p>
+      <div class="rivals" id="rivals"></div>
+      <button class="btn duo2" id="duoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.7"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M13.6 14.4c.9-.6 1.9-.9 2.9-.9 2.3 0 4.2 1.5 4.7 4.5"/></svg>2 players, face to face</button>
+    </div>
+    <p class="note">You can't pick your own colour or your rival's.</p>
+  </div>
+</div>
+
+<div class="screen" id="over" hidden>
+  <div class="card">
+    <p class="kicker" id="overKick">GAME OVER</p>
+    <h2 class="big" id="overTitle">You win!</h2>
+    <div class="result" id="overScore">48 – 32</div>
+    <div class="trail" id="trail" hidden></div>
+    <p class="note" id="overSub"></p>
+    <div class="unlock" id="overUnlock" hidden></div>
+    <button class="btn sun" id="againBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/></svg><span id="againLbl">Rematch</span></button>
+    <div class="row2"><button class="btn ghost" id="shareBtn">Share</button><button class="btn ghost" id="menuBtn">Menu</button></div>
+  </div>
+</div>
+<div class="screen" id="pause" hidden>
+  <div class="card">
+    <h2 class="big">Paused</h2>
+    <button class="btn sun" id="resumeBtn">Resume</button>
+    <div class="row2"><button class="btn ghost" id="restartBtn">Restart</button><button class="btn ghost" id="quitBtn">Menu</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const SDK = window.SkerrySDK || { gameplayStart(){}, gameplayStop(){}, happytime(){}, levelEnd(){}, event(){},
+  save(k, v){ try { localStorage.setItem("colorclaim." + k, JSON.stringify(v)); } catch (e) {} },
+  load(k, d){ try { const v = localStorage.getItem("colorclaim." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } } };
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const SHARE_URL = "https://skerryarcade.com/color-claim/";
+
+/* ---------------- colours ----------------
+   Every colour also has a shape, so the game works for colour-blind players too. */
+const COLS = [
+  { name: "Coral", c: "#FF6B5A", d: "#C9453A", emo: "🟧", shape: "circle" },
+  { name: "Sun", c: "#FFD23F", d: "#C9A21F", emo: "🟨", shape: "tri" },
+  { name: "Mint", c: "#46E0BE", d: "#26A98B", emo: "🟩", shape: "square" },
+  { name: "Sky", c: "#4FA8FF", d: "#2C7BD0", emo: "🟦", shape: "diamond" },
+  { name: "Grape", c: "#A77BFF", d: "#7B52D4", emo: "🟪", shape: "star" },
+  { name: "Rose", c: "#FF7EB6", d: "#D1508C", emo: "🟥", shape: "plus" },
+];
+const SHAPE_SVG = {
+  circle: '<circle cx="12" cy="12" r="8" fill="currentColor"/>',
+  tri: '<path d="M12 3.5 21 19.5H3z" fill="currentColor"/>',
+  square: '<rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="currentColor"/>',
+  diamond: '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z" fill="currentColor"/>',
+  star: '<path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" fill="currentColor"/>',
+  plus: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" fill="currentColor"/>',
+};
+
+/* ---------------- saves ---------------- */
+let save = Object.assign({ wins: 0, games: 0, sound: true, beaten: {}, daily: { day: 0, best: 0, par: 0 }, streak: { last: 0, n: 0 } }, SDK.load("save", {}));
+const store = () => SDK.save("save", save);
+function rng(seed){ let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const dayNo = () => { const d = new Date(); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 10, 1)) / 864e5) + 1; };
+
+/* ---------------- audio ---------------- */
+const Sound = (() => {
+  let ctx = null, master = null;
+  function init(){ if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = save.sound ? .8 : 0; master.connect(ctx.destination); } catch (e) { ctx = null; } }
+  const ok = () => ctx && save.sound;
+  function tone(f, t, dur, type, vol, to){ const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }
+  const NOTES = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+  return { init,
+    setOn(on){ if (master) master.gain.setTargetAtTime(on ? .8 : 0, ctx.currentTime, .02); },
+    pick(){ if (!ok()) return; const t = ctx.currentTime; tone(520, t, .08, "triangle", .14, 780); },
+    // a rising run: the more tiles you swallow, the longer the run
+    claim(n, base){ if (!ok()) return; const t = ctx.currentTime, k = Math.min(10, n);
+      for (let i = 0; i <= k; i++) tone(base * Math.pow(2, NOTES[i] / 12), t + i * .045, .22, "triangle", .07 + .01 * Math.min(i, 5)); },
+    none(){ if (!ok()) return; const t = ctx.currentTime; tone(220, t, .18, "sine", .12, 160); },
+    win(){ if (!ok()) return; const t = ctx.currentTime; [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, t + i * .1, .55, "triangle", .14)); },
+    lose(){ if (!ok()) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(f, t + i * .14, .4, "triangle", .13)); },
+    click(){ if (!ok()) return; tone(880, ctx.currentTime, .05, "triangle", .09); }
+  };
+})();
+const buzz = p => { try { if (save.sound && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); } catch (e) {} };
+
+/* ---------------- rivals ---------------- */
+const RIVALS = [
+  { id: "smudge", name: "Smudge", short: "Smudge", face: "S", color: "#46E0BE", blurb: "Picks what looks nice", style: "loose" },
+  { id: "swatch", name: "Swatch", short: "Swatch", face: "W", color: "#FFA53D", blurb: "Grabs the biggest bite", style: "greedy" },
+  { id: "chroma", name: "Chroma", short: "Chroma", face: "C", color: "#FF6B9A", blurb: "Thinks four moves ahead", style: "deep" },
+];
+function rivalUnlocked(i){ return i === 0 || !!save.beaten[RIVALS[i - 1].id]; }
+function buildRivals(){
+  $("rivals").innerHTML = RIVALS.map((r, i) => '<button class="rival' + (rivalUnlocked(i) ? "" : " locked") + '" data-r="' + i + '">' + (save.beaten[r.id] ? '<span class="star">★</span>' : "") +
+    '<span class="face" style="background:' + r.color + '">' + (rivalUnlocked(i) ? r.face : "🔒") + '</span><b>' + r.short + '</b><small>' + (rivalUnlocked(i) ? r.blurb : "Beat " + RIVALS[i - 1].short) + "</small></button>").join("");
+}
+function beatRival(r){ const first = !save.beaten[r.id]; save.beaten[r.id] = true; store(); const i = RIVALS.indexOf(r); return first && i < RIVALS.length - 1 ? RIVALS[i + 1].name + " unlocked" : ""; }
+
+/* ---------------- the board ----------------
+   color[i] is the tile colour, owner[i] is 0 (free), 1 or 2. A player's land is always one colour.
+   Picking a colour paints your land and swallows every free tile of that colour touching it, again and again. */
+let W = 8, H = 10, N = 80;
+let color = [], owner = [], born = [], mode = "bot", rival = RIVALS[0], turn = 1, state = "menu", moves = 0, trail = [], par = 0, busy = false, time = 0;
+const START = { 1: () => (H - 1) * W, 2: () => W - 1 };
+function neighbours(i){ const x = i % W, y = (i / W) | 0, out = []; if (x > 0) out.push(i - 1); if (x < W - 1) out.push(i + 1); if (y > 0) out.push(i - W); if (y < H - 1) out.push(i + W); return out; }
+let NB = [];
+function makeBoard(seed, w, h, players){
+  W = w; H = h; N = W * H; const r = rng(seed);
+  NB = []; for (let i = 0; i < N; i++) NB.push(neighbours(i));
+  color = new Array(N); owner = new Array(N).fill(0); born = new Array(N).fill(-9);
+  for (let i = 0; i < N; i++) { const x = i % W, y = (i / W) | 0; let c;
+    do { c = Math.floor(r() * 6); } while (players === 2 && ((x > 0 && color[i - 1] === c) || (y > 0 && color[i - W] === c))); color[i] = c; }
+  if (players === 2) { const a = START[1](), b = START[2](); if (color[a] === color[b]) { color[b] = (color[b] + 1) % 6; while (NB[b].some(j => color[j] === color[b]) || color[b] === color[a]) color[b] = (color[b] + 1) % 6; }
+    owner[a] = 1; owner[b] = 2; grow(1, color[a], true); grow(2, color[b], true); }
+  else { owner[0] = 1; grow(1, color[0], true); }
+}
+// apply a move on arrays (used for the real board and for the computer's look-ahead)
+function applyMove(col, own, p, c){
+  for (let i = 0; i < col.length; i++) if (own[i] === p) col[i] = c;
+  const stack = []; let gained = 0;
+  for (let i = 0; i < col.length; i++) if (own[i] === p) stack.push(i);
+  const depth = [];
+  while (stack.length) { const i = stack.pop(); for (const j of NB[i]) if (!own[j] && col[j] === c) { own[j] = p; gained++; stack.push(j); depth.push(j); } }
+  return { gained, cells: depth };
+}
+function grow(p, c, quiet){
+  const before = owner.slice();
+  const res = applyMove(color, owner, p, c);
+  // animate the newly claimed tiles as a wave out from the old border
+  if (!quiet) { const dist = new Map(); const q = []; for (let i = 0; i < N; i++) if (before[i] === p) { dist.set(i, 0); q.push(i); }
+    while (q.length) { const i = q.shift(); for (const j of NB[i]) if (owner[j] === p && !dist.has(j)) { dist.set(j, dist.get(i) + 1); q.push(j); } }
+    for (const j of res.cells) born[j] = time + (dist.get(j) || 1) * .045;
+    for (let i = 0; i < N; i++) if (before[i] === p) born[i] = Math.max(born[i], time - .12); }
+  return res.gained;
+}
+const count = p => owner.reduce((a, o) => a + (o === p ? 1 : 0), 0);
+const landColor = p => { for (let i = 0; i < N; i++) if (owner[i] === p) return color[i]; return -1; };
+const half = () => Math.floor(N / 2) + 1;
+function gainFor(col, own, p, c){ const cc = col.slice(), oo = own.slice(); return applyMove(cc, oo, p, c).gained; }
+function legal(p){ const mine = landColor(p), theirs = mode === "daily" ? -1 : landColor(3 - p); return [0, 1, 2, 3, 4, 5].filter(c => c !== mine && c !== theirs); }
+
+/* ---------------- the computer ---------------- */
+function frontier(col, own, p){ let n = 0; const seen = new Uint8Array(N); for (let i = 0; i < N; i++) if (own[i] === p) for (const j of NB[i]) if (!own[j] && !seen[j]) { seen[j] = 1; n++; } return n; }
+function evalPos(col, own){ let a = 0, b = 0; for (let i = 0; i < N; i++) { if (own[i] === 2) a++; else if (own[i] === 1) b++; } return (a - b) * 10 + (frontier(col, own, 2) - frontier(col, own, 1)) * 2; }
+function search(col, own, p, depth, alpha, beta){
+  const mine = (() => { for (let i = 0; i < N; i++) if (own[i] === p) return col[i]; return -1; })(), theirs = (() => { for (let i = 0; i < N; i++) if (own[i] === 3 - p) return col[i]; return -1; })();
+  let a2 = 0, b2 = 0; for (let i = 0; i < N; i++) { if (own[i] === 2) a2++; else if (own[i] === 1) b2++; }
+  if (a2 >= half() || b2 >= half() || a2 + b2 === N) return (a2 - b2) * 1000;
+  if (depth === 0) return evalPos(col, own);
+  let best = p === 2 ? -1e9 : 1e9;
+  for (let c = 0; c < 6; c++) { if (c === mine || c === theirs) continue;
+    const cc = col.slice(), oo = own.slice(); applyMove(cc, oo, p, c);
+    const v = search(cc, oo, 3 - p, depth - 1, alpha, beta);
+    if (p === 2) { best = Math.max(best, v); alpha = Math.max(alpha, v); } else { best = Math.min(best, v); beta = Math.min(beta, v); }
+    if (beta <= alpha) break; }
+  return best;
+}
+function botPick(){
+  const opts = legal(2);
+  if (rival.style === "loose" && Math.random() < .5) return opts[Math.floor(Math.random() * opts.length)];
+  if (rival.style !== "deep") {
+    const sc = opts.map(c => ({ c, v: gainFor(color, owner, 2, c) * 10 + (rival.style === "greedy" ? Math.random() * 3 : Math.random() * 12) }));
+    sc.sort((a, b) => b.v - a.v); return sc[0].c; }
+  let best = opts[0], bv = -1e9;
+  for (const c of opts) { const cc = color.slice(), oo = owner.slice(); applyMove(cc, oo, 2, c); const v = search(cc, oo, 1, 3, -1e9, 1e9) + Math.random(); if (v > bv) { bv = v; best = c; } }
+  return best;
+}
+
+/* ---------------- daily flood: par from a look-ahead solver ---------------- */
+function solveFlood(){
+  const col = color.slice(), own = owner.slice(); let n = 0;
+  while (own.some(o => !o) && n < 80) {
+    const mine = col[own.indexOf(1)]; let best = -1, bv = -1;
+    for (let c = 0; c < 6; c++) { if (c === mine) continue; const c1 = col.slice(), o1 = own.slice(); let v = applyMove(c1, o1, 1, c).gained * 100;
+      let v2 = 0; for (let d = 0; d < 6; d++) { if (d === c) continue; const c2 = c1.slice(), o2 = o1.slice(); v2 = Math.max(v2, applyMove(c2, o2, 1, d).gained); } v += v2 * 40 + frontier(c1, o1, 1);
+      if (v > bv) { bv = v; best = c; } }
+    applyMove(col, own, 1, best); n++; }
+  return n;
+}
+
+/* ---------------- game flow ---------------- */
+let players = [];
+function startGame(m, r){
+  mode = m; if (r) rival = r; moves = 0; trail = []; busy = false; turn = 1;
+  if (mode === "daily") { makeBoard(dayNo() * 7919 + 101, 12, 12, 1); par = solveFlood(); players = [{ name: "You", color: "#FFD23F" }]; }
+  else { makeBoard((Math.random() * 1e9) | 0, 8, 10, 2);
+    players = mode === "duo" ? [{ name: "Player 1", color: "#FFD23F" }, { name: "Player 2", color: "#46E0BE" }] : [{ name: "You", color: "#FFD23F" }, { name: rival.name, color: rival.color, bot: true }];
+  }
+  for (let i = 0; i < N; i++) born[i] = time + ((i % W) + ((i / W) | 0)) * .018;
+  state = "play"; show(null); $("hud").hidden = false; $("palA").hidden = false; $("palB").hidden = mode !== "duo"; $("movesTxt").hidden = mode !== "daily";
+  layout(); refreshHud(); buildPalettes();
+  SDK.gameplayStart(); SDK.event("round_start", { mode, rival: mode === "bot" ? rival.id : "" });
+  if (mode !== "daily") popup(turnName() , players[turn - 1].color);
+  maybeBot();
+}
+const turnName = () => { const p = players[turn - 1]; return p.bot ? p.name + "'s turn" : mode === "bot" ? "Your turn" : p.name; };
+function pick(p, c){
+  if (state !== "play" || busy || p !== turn) return;
+  if (!legal(p).includes(c)) return;
+  busy = true; Sound.pick();
+  const gained = grow(p, c, false);
+  trail.push(c); if (mode === "daily") moves++;
+  if (gained) { Sound.claim(gained, p === 1 ? 392 : 330); buzz(gained > 6 ? [10, 20, 10] : 8); floatGain(p, gained); } else Sound.none();
+  refreshHud(); buildPalettes();
+  const wait = Math.min(1.1, .25 + gained * .03);
+  setTimeout(() => { busy = false; afterMove(); }, wait * 1000);
+}
+let floats = [];
+function floatGain(p, n){
+  // the "+N" floats from the middle of the freshly claimed tiles
+  let sx = 0, sy = 0, k = 0; for (let i = 0; i < N; i++) if (owner[i] === p && born[i] > time - .05) { sx += i % W; sy += (i / W) | 0; k++; }
+  if (!k) return; floats.push({ x: sx / k + .5, y: sy / k + .5, txt: "+" + n, col: "#fff", t: 0, big: n >= 8 });
+}
+function afterMove(){
+  if (state !== "play") return;
+  if (mode === "daily") { if (owner.every(o => o)) return finishDaily(); return; }
+  const a = count(1), b = count(2);
+  if (a >= half() || b >= half() || a + b === N) return finishDuel();
+  // a player walled in with nothing left to grab skips; if neither can grow, the game ends
+  const canGrow = p => legal(p).some(c => gainFor(color, owner, p, c) > 0);
+  const nxt = 3 - turn;
+  if (!canGrow(nxt) && !canGrow(turn)) return finishDuel();
+  turn = canGrow(nxt) ? nxt : turn;
+  refreshHud(); buildPalettes(); maybeBot();
+}
+function maybeBot(){
+  if (state !== "play" || mode !== "bot" || turn !== 2) return;
+  setTimeout(() => { if (state !== "play" || turn !== 2 || busy) return; const c = botPick(); botFlash = { c, t: 0 }; popup(rival.name + " takes " + COLS[c].name, COLS[c].c); setTimeout(() => pick(2, c), 420); }, 520);
+}
+let botFlash = null;
+function finishDuel(){
+  state = "over"; SDK.gameplayStop(); $("palA").hidden = $("palB").hidden = true;
+  // whatever is left free goes to whoever can still reach it at the end: keep the score honest and simple
+  const a = count(1), b = count(2), w = a === b ? 0 : a > b ? 1 : 2;
+  save.games++;
+  let unl = "";
+  const tt = $("overTitle");
+  if (mode === "bot") { const won = w === 1; tt.textContent = !w ? "A draw!" : won ? "You win!" : rival.name + " wins"; if (won) { save.wins++; unl = beatRival(rival); Sound.win(); SDK.happytime(); } else Sound.lose(); }
+  else { tt.textContent = w ? players[w - 1].name + " wins!" : "A draw!"; Sound.win(); }
+  tt.style.color = w ? players[w - 1].color : "";
+  store();
+  $("overKick").textContent = mode === "bot" ? "YOU VS " + rival.name.toUpperCase() : "FACE TO FACE";
+  $("overScore").textContent = a + " – " + b; $("trail").hidden = true;
+  $("overSub").textContent = "Tiles owned. " + half() + " wins the board.";
+  const u = $("overUnlock"); u.hidden = !unl; u.textContent = unl;
+  $("againLbl").textContent = "Rematch";
+  SDK.levelEnd(mode, "done", a); SDK.event("duel_end", { mode, rival: mode === "bot" ? rival.id : "", won: mode === "bot" ? (w === 1 ? 1 : 0) : -1, a, b });
+  setTimeout(() => { $("hud").hidden = true; show("over"); }, 900);
+}
+function finishDaily(){
+  state = "over"; SDK.gameplayStop(); $("palA").hidden = true; $("movesTxt").hidden = true;
+  const d = dayNo(), made = moves <= par;
+  if (save.daily.day !== d || moves < save.daily.best) { save.daily = { day: d, best: moves, par }; }
+  if (save.streak.last !== d) { save.streak.n = save.streak.last === d - 1 ? save.streak.n + 1 : 1; save.streak.last = d; }
+  store(); if (made) { Sound.win(); SDK.happytime(); } else Sound.claim(5, 330);
+  $("overKick").textContent = "DAILY FLOOD #" + d;
+  const tt = $("overTitle"); tt.style.color = made ? "#FFD23F" : "";
+  tt.textContent = moves < par ? "Under par!" : moves === par ? "On par!" : "Board filled";
+  $("overScore").textContent = moves + " moves · par " + par;
+  const tr = $("trail"); tr.hidden = false; tr.innerHTML = trail.map(c => '<i style="--c:' + COLS[c].c + '"></i>').join("");
+  $("overSub").textContent = (made ? "Nice. " : "Par is " + par + ". Try again, or come back tomorrow. ") + (save.streak.n > 1 ? save.streak.n + "-day streak." : "");
+  $("overUnlock").hidden = true; $("againLbl").textContent = "Try again";
+  SDK.levelEnd("daily", made ? "win" : "done", moves); SDK.event("daily_end", { moves, par });
+  setTimeout(() => { $("hud").hidden = true; show("over"); }, 900);
+}
+
+/* ---------------- HUD and palettes ---------------- */
+function refreshHud(){
+  const pa = players[0], pb = players[1];
+  if (mode === "daily") {
+    const own = count(1);
+    $("nA").textContent = "Daily #" + dayNo(); $("vA").textContent = own; $("plA").style.setProperty("--c", COLS[landColor(1)].c); $("plA").className = "pl on";
+    $("nB").textContent = "par " + par; $("vB").textContent = moves; $("plB").style.setProperty("--c", "#fff"); $("plB").className = "pl r";
+    $("barA").style.width = (own / N * 100) + "%"; $("barB").style.width = "0%"; $("bar").style.setProperty("--ca", COLS[landColor(1)].c);
+    $("goal").textContent = "Fill all " + N + " tiles in " + par + " moves or fewer";
+    $("movesTxt").textContent = "MOVE " + moves + " / PAR " + par;
+    return; }
+  const a = count(1), b = count(2);
+  $("nA").textContent = pa.name; $("nB").textContent = pb.name; $("vA").textContent = a; $("vB").textContent = b;
+  $("plA").style.setProperty("--c", pa.color); $("plB").style.setProperty("--c", pb.color);
+  $("plA").className = "pl" + (turn === 1 ? " on" : " off"); $("plB").className = "pl r" + (turn === 2 ? " on" : " off");
+  $("bar").style.setProperty("--ca", pa.color); $("bar").style.setProperty("--cb", pb.color);
+  $("barA").style.width = (a / N * 100) + "%"; $("barB").style.width = (b / N * 100) + "%";
+  $("goal").textContent = "Own " + half() + " of " + N + " tiles to win";
+}
+function buildPalettes(){
+  const mk = (box, p) => {
+    if (box.hidden) return;
+    const mine = landColor(p), theirs = mode === "daily" ? -1 : landColor(3 - p), active = state === "play" && turn === p && !(players[p - 1] || {}).bot && !busy;
+    box.classList.toggle("idle", !active);
+    box.innerHTML = COLS.map((c, i) => { const dis = i === mine || i === theirs;
+      const g = !dis && active && (mode === "daily" || p === turn) ? gainFor(color, owner, p, i) : 0;
+      return '<button class="sw" style="--c:' + c.c + '" data-c="' + i + '" aria-label="' + c.name + '"' + (dis ? ' disabled data-tag="' + (i === mine ? (mode === "daily" ? "NOW" : "YOURS") : "THEIRS") + '"' : "") + '>' +
+        '<svg viewBox="0 0 24 24">' + SHAPE_SVG[c.shape] + '</svg>' + (g ? '<span class="gain">+' + g + '</span>' : "") + "</button>"; }).join("");
+  };
+  mk($("palA"), 1); mk($("palB"), 2);
+}
+function palTap(p){ return e => { const b = e.target.closest("[data-c]"); if (!b || b.disabled) return; e.stopPropagation(); Sound.init(); pick(p, +b.dataset.c); }; }
+$("palA").addEventListener("click", palTap(1)); $("palB").addEventListener("click", e => palTap(mode === "duo" ? 2 : 1)(e));
+
+/* ---------------- rendering ---------------- */
+const cv = $("game"), ctx = cv.getContext("2d");
+let DPR = 1, VW = 0, VH = 0, CS = 40, OX = 0, OY = 0;
+function layout(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5); VW = innerWidth; VH = innerHeight;
+  cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
+  const st = safeTop(), duoTop = mode === "duo" && state === "play";
+  const top = (duoTop ? 160 : 92) + st, bottom = (mode === "daily" ? 120 : 96) + safeBottom();
+  CS = Math.min((VW - 20) / W, (VH - top - bottom) / H, 64);
+  OX = (VW - W * CS) / 2; OY = top + Math.max(0, (VH - top - bottom - H * CS) / 2);
+  $("palB").style.top = (st + 88) + "px";
+}
+function safeTop(){ let p = $("satProbe"); if (!p) { p = document.createElement("div"); p.id = "satProbe"; p.style.cssText = "position:fixed;top:0;height:env(safe-area-inset-top,0px);width:0;visibility:hidden"; document.body.appendChild(p); } return p.offsetHeight || 0; }
+function safeBottom(){ let p = $("sabProbe"); if (!p) { p = document.createElement("div"); p.id = "sabProbe"; p.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom,0px);width:0;visibility:hidden"; document.body.appendChild(p); } return p.offsetHeight || 0; }
+function rrect(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function shape(kind, x, y, s){
+  ctx.beginPath();
+  if (kind === "circle") ctx.arc(x, y, s * .5, 0, 7);
+  else if (kind === "tri") { ctx.moveTo(x, y - s * .55); ctx.lineTo(x + s * .55, y + s * .4); ctx.lineTo(x - s * .55, y + s * .4); ctx.closePath(); }
+  else if (kind === "square") ctx.rect(x - s * .42, y - s * .42, s * .84, s * .84);
+  else if (kind === "diamond") { ctx.moveTo(x, y - s * .6); ctx.lineTo(x + s * .6, y); ctx.lineTo(x, y + s * .6); ctx.lineTo(x - s * .6, y); ctx.closePath(); }
+  else if (kind === "star") { for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? s * .25 : s * .6; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } ctx.closePath(); }
+  else if (kind === "plus") { const a = s * .2, b = s * .55; ctx.rect(x - a, y - b, a * 2, b * 2); ctx.rect(x - b, y - a, b * 2, a * 2); }
+  ctx.fill();
+}
+const ease = t => { const c1 = 1.7, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+function render(dt){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, "#1B2244"); g.addColorStop(1, "#10142A"); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  if (!N || !color.length) return;
+  const gap = Math.max(2, CS * .07), rad = CS * .2;
+  // board tray
+  rrect(OX - 8, OY - 8, W * CS + 16, H * CS + 16, 18); ctx.fillStyle = "rgba(255,255,255,.05)"; ctx.fill();
+  for (let i = 0; i < N; i++) {
+    const x = OX + (i % W) * CS, y = OY + ((i / W) | 0) * CS, C = COLS[color[i]], o = owner[i];
+    const k = clamp((time - born[i]) / .28, 0, 1), s = born[i] > time ? .55 : lerp(.55, 1, ease(k));
+    if (o) {
+      // owned land: tiles melt together into one raised island
+      const L = (i % W > 0 && owner[i - 1] === o) ? 0 : gap / 2, R = (i % W < W - 1 && owner[i + 1] === o) ? 0 : gap / 2;
+      const T = (i >= W && owner[i - W] === o) ? 0 : gap / 2, B = (i < N - W && owner[i + W] === o) ? 0 : gap / 2;
+      const cx = x + CS / 2, cy = y + CS / 2, w = (CS - L - R) * s, h = (CS - T - B) * s, lx = cx - (CS / 2 - L) * s, ty = cy - (CS / 2 - T) * s;
+      ctx.fillStyle = C.d; ctx.fillRect(lx, ty + 3, w, h);
+      ctx.fillStyle = C.c; ctx.fillRect(lx, ty, w, h);
+      if (born[i] > time - .4 && born[i] <= time) { ctx.fillStyle = "rgba(255,255,255," + (1 - (time - born[i]) / .4) * .55 + ")"; ctx.fillRect(lx, ty, w, h); }
+    } else {
+      const sz = (CS - gap * 1.6) * s, cx = x + CS / 2, cy = y + CS / 2;
+      rrect(cx - sz / 2, cy - sz / 2 + 2, sz, sz, rad); ctx.fillStyle = C.d; ctx.fill();
+      rrect(cx - sz / 2, cy - sz / 2, sz, sz, rad); ctx.fillStyle = C.c; ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,.22)"; shape(C.shape, cx, cy, CS * .3 * s);
+    }
+  }
+  // home badges in the corners and an outline round each player's land
+  if (mode !== "daily") for (const p of [1, 2]) { const pl = players[p - 1]; if (!pl) continue;
+    ctx.strokeStyle = pl.color; ctx.lineWidth = Math.max(2, CS * .07); ctx.lineCap = "round";
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) { if (owner[i] !== p) continue; const x = OX + (i % W) * CS, y = OY + ((i / W) | 0) * CS;
+      if (i % W === 0 || owner[i - 1] !== p) { ctx.moveTo(x, y); ctx.lineTo(x, y + CS); }
+      if (i % W === W - 1 || owner[i + 1] !== p) { ctx.moveTo(x + CS, y); ctx.lineTo(x + CS, y + CS); }
+      if (i < W || owner[i - W] !== p) { ctx.moveTo(x, y); ctx.lineTo(x + CS, y); }
+      if (i >= N - W || owner[i + W] !== p) { ctx.moveTo(x, y + CS); ctx.lineTo(x + CS, y + CS); } }
+    ctx.globalAlpha = turn === p && state === "play" ? .65 + .35 * Math.sin(time * 5) : .55; ctx.stroke(); ctx.globalAlpha = 1;
+    const hi = START[p](), hx = OX + (hi % W + .5) * CS, hy = OY + (((hi / W) | 0) + .5) * CS;
+    ctx.fillStyle = pl.color; ctx.beginPath(); ctx.arc(hx, hy, CS * .3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1A1F3A"; ctx.font = "800 " + (CS * .28) + "px Unbounded, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(pl.bot ? rival.face : mode === "bot" ? "★" : String(p), hx, hy + 1); }
+  else { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(OX + CS / 2, OY + CS / 2, CS * .22, 0, 7); ctx.fill(); }
+  // the computer "hovers" over the colour it is about to pick
+  if (botFlash) { botFlash.t += dt; if (botFlash.t > .6) botFlash = null; }
+  for (let i = floats.length - 1; i >= 0; i--) { const f = floats[i]; f.t += dt; if (f.t > 1) { floats.splice(i, 1); continue; }
+    ctx.globalAlpha = 1 - f.t; ctx.fillStyle = "#fff"; ctx.font = "800 " + (CS * (f.big ? .7 : .5)) + "px Unbounded, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 8; ctx.fillText(f.txt, OX + f.x * CS, OY + (f.y - f.t * .8) * CS); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+}
+
+/* ---------------- screens ---------------- */
+function show(id){ for (const s of ["menu", "over", "pause"]) $(s).hidden = s !== id; }
+function popup(text, col){ const p = $("pop"); p.textContent = text; p.style.color = col || "#fff"; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show"); }
+let toastT; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2400); }
+function nextRival(){ for (let i = 0; i < RIVALS.length; i++) if (rivalUnlocked(i) && !save.beaten[RIVALS[i].id]) return RIVALS[i]; return RIVALS[RIVALS.length - 1]; }
+function refreshMenu(){
+  buildRivals(); const d = dayNo(), played = save.daily.day === d;
+  $("sWins").textContent = save.wins; $("sStreak").textContent = save.streak.last >= d - 1 ? save.streak.n : 0;
+  $("sDaily").textContent = played ? save.daily.best + "/" + save.daily.par : "–";
+  $("playLbl").textContent = "Play " + nextRival().name;
+  $("dailyName").textContent = "Daily flood #" + d;
+  $("dailySub").textContent = played ? "Best today " + save.daily.best + " moves, par " + save.daily.par + " · try again" : "Fill the whole board in par or less";
+  demoBoard();
+}
+function demoBoard(){ mode = "bot"; makeBoard(4242, 8, 10, 2); for (let k = 0; k < 6; k++) { applyMove(color, owner, 1, legal(1)[k % 3]); applyMove(color, owner, 2, legal(2)[(k + 1) % 3]); }
+  players = [{ name: "", color: "#FFD23F" }, { name: "", color: "#46E0BE" }]; for (let i = 0; i < N; i++) born[i] = -9; layout(); }
+function toMenu(){ if (state === "play" || state === "pause") SDK.gameplayStop(); state = "menu"; $("hud").hidden = true; $("palA").hidden = $("palB").hidden = true; $("movesTxt").hidden = true; refreshMenu(); show("menu"); }
+function pause(){ if (state !== "play") return; state = "pause"; SDK.gameplayStop(); show("pause"); }
+function resume(){ if (state !== "pause") return; state = "play"; show(null); SDK.gameplayStart(); maybeBot(); }
+async function share(){
+  let text;
+  if (mode === "daily") text = "Color Claim Daily #" + dayNo() + (moves <= par ? " ✅ " : " ") + moves + "/" + par + " moves\n" + trail.map(c => COLS[c].emo).join("") + "\n" + SHARE_URL;
+  else if (mode === "bot") text = "Color Claim: " + $("overTitle").textContent + " " + $("overScore").textContent + " vs " + rival.name + " 🎨 Can you beat " + rival.name + "?\n" + SHARE_URL;
+  else text = "Color Claim face to face: " + $("overTitle").textContent + " " + $("overScore").textContent + " 🎨\n" + SHARE_URL;
+  SDK.event("share", { mode });
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Copied. Paste it to a friend"); } catch (e) { toast(text); }
+}
+function soundIcon(){ $("soundBtn").innerHTML = save.sound ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>'; }
+function toggleSound(){ save.sound = !save.sound; store(); Sound.setOn(save.sound); soundIcon(); }
+
+/* ---------------- input ---------------- */
+const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); Sound.init(); fn(); });
+tap("playBtn", () => startGame("bot", nextRival())); tap("dailyBtn", () => startGame("daily")); tap("duoBtn", () => startGame("duo"));
+tap("againBtn", () => startGame(mode, rival)); tap("menuBtn", toMenu); tap("shareBtn", share);
+tap("pauseBtn", pause); tap("resumeBtn", resume); tap("restartBtn", () => startGame(mode, rival)); tap("quitBtn", toMenu); tap("soundBtn", toggleSound);
+$("rivals").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; Sound.init(); const i = +b.dataset.r;
+  if (!rivalUnlocked(i)) { toast("Beat " + RIVALS[i - 1].name + " first"); return; } startGame("bot", RIVALS[i]); });
+// tapping a tile on the board picks its colour (a quick way to play on a big screen)
+cv.addEventListener("pointerdown", e => { Sound.init(); if (state !== "play") return;
+  const cx = Math.floor((e.clientX - OX) / CS), cy = Math.floor((e.clientY - OY) / CS); if (cx < 0 || cy < 0 || cx >= W || cy >= H) return;
+  const p = mode === "duo" ? turn : 1; if (players[p - 1].bot) return; pick(p, color[cy * W + cx]); });
+addEventListener("keydown", e => { Sound.init();
+  if (e.code === "KeyP" || e.code === "Escape") state === "play" ? pause() : state === "pause" && resume();
+  if (e.code === "KeyM") toggleSound();
+  const n = parseInt(e.key, 10); if (state === "play" && n >= 1 && n <= 6) { const p = mode === "duo" ? turn : 1; if (!players[p - 1].bot) pick(p, n - 1); } });
+addEventListener("resize", layout);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+let last = performance.now();
+function frame(now){ const dt = Math.min(.05, (now - last) / 1000); last = now; if (state !== "pause") time += dt; render(dt); requestAnimationFrame(frame); }
+layout(); soundIcon(); toMenu();
+requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+if (/[?&]debug=1/.test(location.search)) window.__cc = { RIVALS, startGame, pick, legal, botPick, gainFor: c => gainFor(color, owner, 1, c), get state(){ return state; }, get turn(){ return turn; }, get busy(){ return busy; }, get moves(){ return moves; }, get par(){ return par; }, count, get mode(){ return mode; } };
+})();
+</script>
+</body>
+</html>
